@@ -6,6 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -13,32 +14,22 @@ jobs:
           distribution: 'temurin'
       
       - name: Install Dependencies
-        run: |
-          npm install
-          # تثبيت أداة توليد الأيقونات
-          npm install @capacitor/assets -g
+        run: npm install
 
       - name: Build Project
         run: npm run build
 
-      - name: Setup Capacitor and Icons
+      - name: Setup Capacitor
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
           npx cap init RiderWallet com.rider.wallet --web-dir dist
           npx cap add android
-          # تحويل صورتك (icon.png) إلى أيقونة أندرويد رسمية
-          if [ -f "icon.png" ]; then
-            mkdir -p assets
-            cp icon.png assets/icon-only.png
-            cp icon.png assets/icon-foreground.png
-            cp icon.png assets/icon-background.png
-            npx capacitor-assets generate --android
-          fi
           npx cap copy
 
       - name: Fix Kotlin Duplicates
         run: |
           cd android
+          # تنظيف تعارضات مكتبات كوتلن وإجبار النسخة المستقرة
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           sed -i 's/dependencies {/dependencies {\n    constraints {\n        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22")\n        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22")\n    }/' app/build.gradle
@@ -52,5 +43,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: rider-wallet-with-icon
+          name: rider-wallet-app
           path: android/app/build/outputs/apk/debug/app-debug.apk
