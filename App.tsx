@@ -260,7 +260,7 @@ const App: React.FC = () => {
                 <div className="p-6 bg-orange-50 border-2 border-orange-200 rounded-3xl flex items-start gap-4">
                   <span className="text-3xl">⚠️</span>
                   <p className="text-sm text-orange-900 font-black leading-relaxed">
-                    تحذير: يتم ترحيل الأموال تلقائياً للخزنة يومياً عند الساعة 12:00 ليلاً. الصافي = الكسب - (النسبة + الوقود + المشتريات).
+                    تحذير: يتم ترحيل الأموال تلقائياً للخزنة يومياً عند الساعة 6:00 ليلاً. الصافي = الكسب - (النسبة + الوقود + المشتريات).
                   </p>
                 </div>
               </div>
