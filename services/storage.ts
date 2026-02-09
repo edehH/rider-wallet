@@ -1,57 +1,50 @@
+
 import { AppData, DailyStats } from '../types';
 import { INITIAL_PIN } from '../constants';
 
-const STORAGE_KEY = 'mr_rider_wallet_data';
+const STORAGE_KEY = 'mr_rider_wallet_data_v3';
 
-// التعديل هنا: دالة إنشاء يوم جديد تعتمد الآن على الوقت المعدل (طرح 6 ساعات)
-const createNewDay = (goal: number): DailyStats => {
-  const now = new Date();
-  const adjustedDate = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  return {
-    date: adjustedDate.toISOString().split('T')[0],
-    earnings: 0,
-    ownerShare: 0,
-    fuel: 0,
-    purchases: 0,
-    goal: goal
-  };
-};
+const createNewDay = (goal: number): DailyStats => ({
+  date: new Date().toISOString().split('T')[0],
+  earnings: 0,
+  ownerShare: 0,
+  fuel: 0,
+  purchases: 0,
+  objectivePayments: 0,
+  goal: goal,
+  operations: []
+});
 
 export const getInitialData = (): AppData => {
   const stored = localStorage.getItem(STORAGE_KEY);
-  
-  // التعديل هنا: جلب التاريخ الحالي بناءً على دورة اليوم التي تبدأ 6 صباحاً
-  const now = new Date();
-  const adjustedDate = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-  const today = adjustedDate.toISOString().split('T')[0];
-
   if (stored) {
     const data = JSON.parse(stored) as AppData;
-    
-    // التحقق مما إذا كان التاريخ المخزن يختلف عن التاريخ الحالي المعدل (بناءً على الساعة 6 صباحاً)
+    const today = new Date().toISOString().split('T')[0];
     if (data.currentDay.date !== today) {
        // Automatic Settlement
-       const net = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases);
+       const net = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0));
        if (net > 0) {
          data.vault.push({ date: data.currentDay.date, amount: net });
        }
-       // إنشاء يوم جديد باستخدام الهدف المخزن في الإعدادات
        data.currentDay = createNewDay(data.settings.dailyGoal);
        data.lastSettlementDate = today;
        saveData(data);
     }
+    // Migration: Ensure objectives and operations exist
+    if (!data.objectives) data.objectives = [];
+    if (!data.currentDay.operations) data.currentDay.operations = [];
     return data;
   }
   
   const defaultData: AppData = {
-    currentDay: createNewDay(5000),
+    currentDay: createNewDay(500),
     vault: [],
+    objectives: [],
     settings: {
-      dailyGoal: 5000,
+      dailyGoal: 500,
       vaultPin: INITIAL_PIN
     },
-    // التعديل هنا: ضبط تاريخ آخر تسوية ليكون التاريخ المعدل
-    lastSettlementDate: today
+    lastSettlementDate: new Date().toISOString().split('T')[0]
   };
   saveData(defaultData);
   return defaultData;
