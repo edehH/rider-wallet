@@ -35,6 +35,7 @@ export interface VaultEntry {
 
 export interface AppSettings {
   dailyGoal: number;
+  monthlyGoal: number;
   vaultPin: string;
 }
 

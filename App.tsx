@@ -8,7 +8,7 @@ import Keypad from './components/Keypad';
 const App: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
   const [activeInput, setActiveInput] = useState<{ 
-    type: keyof DailyStats | 'pin' | 'goal' | 'tempEarnings' | 'editOperation' | 'newObjectiveAmount' | 'payObjective' | 'withdrawVault' | 'editObjectiveAmount', 
+    type: keyof DailyStats | 'pin' | 'goal' | 'monthlyGoal' | 'tempEarnings' | 'editOperation' | 'newObjectiveAmount' | 'payObjective' | 'withdrawVault' | 'editObjectiveAmount', 
     title: string,
     operationId?: string,
     objectiveId?: string
@@ -50,6 +50,8 @@ const App: React.FC = () => {
     if (activeInput.type === 'goal') {
       newData.settings.dailyGoal = numValue;
       newData.currentDay.goal = numValue;
+    } else if (activeInput.type === 'monthlyGoal') {
+      newData.settings.monthlyGoal = numValue;
     } else if (activeInput.type === 'withdrawVault') {
       const entry: VaultEntry = {
         date: new Date().toISOString().split('T')[0],
@@ -170,14 +172,28 @@ const App: React.FC = () => {
   const netBalance = data.currentDay.earnings - totalDeductions;
   const progress = Math.min((netBalance / data.currentDay.goal) * 100, 100);
 
-  // Dynamic progress color generator
+  // Time Progression (06:00 to 22:00)
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const dayTimeProgress = Math.min(Math.max((currentHour - 6) / 16, 0), 1) * 100;
+  const isNight = now.getHours() >= 18 || now.getHours() < 6;
+
+  // Monthly Progression
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const currentDayOfMonth = now.getDate() + now.getHours() / 24;
+  const monthTimeProgress = Math.min((currentDayOfMonth / daysInMonth) * 100, 100);
+  
+  // Monthly Achievement Progress
+  const currentMonthStr = now.toISOString().slice(0, 7);
+  const monthlyEarnings = data.vault
+    .filter(entry => entry.date.startsWith(currentMonthStr))
+    .reduce((acc, curr) => acc + curr.amount, 0);
+  const monthAchievementProgress = Math.min((monthlyEarnings / (data.settings.monthlyGoal || 15000)) * 100, 100);
+
+  // Dynamic progress color generator (Red 0% -> Green 100%)
   const getProgressColor = (pct: number) => {
-    if (pct < 10) return 'bg-green-50';
-    if (pct < 30) return 'bg-green-200';
-    if (pct < 50) return 'bg-green-400';
-    if (pct < 70) return 'bg-green-600';
-    if (pct < 90) return 'bg-green-800';
-    return 'bg-green-950';
+    const hue = Math.min(pct * 1.2, 120); // 0 (red) to 120 (green)
+    return `hsl(${hue}, 85%, 45%)`;
   };
 
   return (
@@ -197,13 +213,30 @@ const App: React.FC = () => {
         <div className="flex justify-between items-end mb-3">
           <div>
             <span className="text-[0.65rem] font-black uppercase tracking-wider text-gray-400 block mb-0.5">الهدف اليومي</span>
-            <span className="text-2xl font-black text-gray-900">{data.currentDay.goal.toLocaleString()} <span className="text-xs font-bold opacity-60">أوقية</span></span>
+            <span className="text-2xl font-black text-gray-900">{(data.currentDay.goal || 0).toLocaleString()} <span className="text-xs font-bold opacity-60">أوقية</span></span>
           </div>
           <div className="text-right"><span className="text-4xl font-black text-gray-900 leading-none">{Math.round(progress)}%</span></div>
         </div>
-        <div className="w-full bg-gray-100 rounded-full h-10 overflow-hidden border-2 border-gray-50 p-1.5 shadow-inner">
-          <div className={`${getProgressColor(progress)} h-full rounded-full transition-all duration-700 ease-out`} style={{ width: `${progress}%` }} />
+        
+        {/* Achievement Line */}
+        <div className="w-full bg-gray-100 rounded-full h-10 overflow-hidden border-2 border-gray-50 p-1.5 shadow-inner relative mb-2">
+          <div className="h-full rounded-full transition-all duration-700 ease-out flex items-center justify-end px-3" style={{ width: `${progress}%`, backgroundColor: getProgressColor(progress) }}>
+             <span className="text-white text-lg drop-shadow-md">🏁</span>
+          </div>
         </div>
+
+        {/* Time Race Line */}
+        <div className="w-full bg-gray-100 rounded-full h-10 overflow-hidden border-2 border-gray-50 p-1.5 shadow-inner relative">
+          <div className="h-full rounded-full transition-all duration-1000 ease-linear bg-blue-400/40 flex items-center justify-end px-3" style={{ width: `${dayTimeProgress}%` }}>
+             <span className="text-xl">
+               {isNight ? '🌙' : '☀️'}
+             </span>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[0.6rem] font-black text-gray-400 uppercase tracking-widest opacity-50">سباق الوقت اليومي</span>
+          </div>
+        </div>
+
         <p className="text-center text-[0.65rem] font-black text-gray-400 mt-3 uppercase tracking-widest">اضغط لتعديل الهدف</p>
       </div>
 
@@ -211,7 +244,7 @@ const App: React.FC = () => {
       <div className="bg-[#1e293b] rounded-[3rem] p-8 text-white mb-8 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10">
         <p className="text-blue-300 font-black mb-1 text-lg uppercase tracking-tight opacity-80">الصافي المتبقي لك</p>
         <h2 className="text-6xl font-black tracking-tighter flex items-baseline gap-2">
-          {netBalance.toLocaleString()} <span className="text-xl font-bold opacity-40">أوقية</span>
+          {(netBalance || 0).toLocaleString()} <span className="text-xl font-bold opacity-40">أوقية</span>
         </h2>
       </div>
 
@@ -251,7 +284,7 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-4">
                   <span className={`font-black text-xl ${op.type === 'earnings' ? 'text-green-600' : 'text-red-500'}`}>
-                    {op.type === 'earnings' ? '+' : '-'}{op.amount.toLocaleString()}
+                    {op.type === 'earnings' ? '+' : '-'}{(op.amount || 0).toLocaleString()}
                   </span>
                   <div className="flex gap-2">
                     <button onClick={() => setActiveInput({ type: 'editOperation', title: 'تعديل المبلغ', operationId: op.id })} className="p-2 bg-blue-50 text-blue-600 rounded-xl">✎</button>
@@ -287,7 +320,7 @@ const App: React.FC = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <h4 className="font-black text-xl text-gray-800">{obj.title} {obj.isCompleted && '✅'}</h4>
-                    <p className="text-sm font-bold text-gray-400">المطلوب: {obj.targetAmount.toLocaleString()} أوقية</p>
+                    <p className="text-sm font-bold text-gray-400">المطلوب: {(obj.targetAmount || 0).toLocaleString()} أوقية</p>
                   </div>
                   <div className="flex gap-2">
                     {!obj.isCompleted && (
@@ -300,7 +333,7 @@ const App: React.FC = () => {
                 <div className="w-full bg-gray-100 h-4 rounded-full overflow-hidden mb-2">
                   <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${Math.min((obj.paidAmount / obj.targetAmount) * 100, 100)}%` }}></div>
                 </div>
-                <p className="text-left text-xs font-black text-gray-500">تم دفع: {obj.paidAmount.toLocaleString()} ({Math.round((obj.paidAmount / obj.targetAmount) * 100)}%)</p>
+                <p className="text-left text-xs font-black text-gray-500">تم دفع: {(obj.paidAmount || 0).toLocaleString()} ({Math.round((obj.paidAmount / (obj.targetAmount || 1)) * 100)}%)</p>
               </div>
             ))}
           </div>
@@ -318,7 +351,7 @@ const App: React.FC = () => {
             <div className="absolute -bottom-10 -right-10 opacity-10 text-[12rem]">🏦</div>
             <p className="font-black mb-1 text-xl opacity-80 uppercase tracking-widest">إجمالي المدخرات</p>
             <h3 className="text-6xl font-black tracking-tighter mb-6">
-              {data.vault.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} <span className="text-xl font-bold">أوقية</span>
+              {(data.vault.reduce((acc, curr) => acc + curr.amount, 0) || 0).toLocaleString()} <span className="text-xl font-bold">أوقية</span>
             </h3>
             <button 
               onClick={() => setActiveInput({ type: 'withdrawVault', title: 'مبلغ السحب من الخزنة' })}
@@ -337,7 +370,7 @@ const App: React.FC = () => {
                    <span className="text-gray-800">{entry.amount < 0 ? 'عملية سحب' : 'ترحيل يومي'}</span>
                 </div>
                 <span className={`text-2xl ${entry.amount < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                  {entry.amount < 0 ? '' : '+'}{entry.amount.toLocaleString()}
+                  {entry.amount < 0 ? '' : '+'}{(entry.amount || 0).toLocaleString()}
                 </span>
               </div>
             ))}
@@ -353,6 +386,37 @@ const App: React.FC = () => {
             <button onClick={() => setShowSettings(false)} className="p-3 bg-gray-200 rounded-2xl font-black text-gray-700 px-6">رجوع ✕</button>
           </div>
           <button onClick={() => exportData(data)} className="w-full text-right p-6 bg-blue-600 text-white rounded-[1.5rem] font-black text-xl shadow-lg border-b-8 border-blue-800 active:translate-y-1 active:border-b-4 transition-all mb-4">تصدير نسخة احتياطية (Backup)</button>
+          
+          {/* Monthly Goal Race Card */}
+          <div className="bg-white p-6 rounded-[2rem] border-4 border-gray-100 shadow-md mb-6" onClick={() => setActiveInput({ type: 'monthlyGoal', title: 'تعديل الهدف الشهري' })}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-black text-gray-800">الهدف الشهري 🏆</h3>
+              <span className="text-2xl font-black text-blue-600">{Math.round(monthAchievementProgress)}%</span>
+            </div>
+            
+            {/* Monthly Achievement Line */}
+            <div className="w-full bg-gray-100 rounded-full h-10 overflow-hidden border-2 border-gray-50 p-1.5 shadow-inner relative mb-2">
+              <div className="h-full rounded-full transition-all duration-700 ease-out flex items-center justify-end px-3" style={{ width: `${monthAchievementProgress}%`, backgroundColor: getProgressColor(monthAchievementProgress) }}>
+                <span className="text-lg">🚀</span>
+              </div>
+            </div>
+
+            {/* Monthly Time Line */}
+            <div className="w-full bg-gray-100 rounded-full h-10 overflow-hidden border-2 border-gray-50 p-1.5 shadow-inner relative">
+              <div className="h-full rounded-full bg-gray-400/40 flex items-center justify-end px-3" style={{ width: `${monthTimeProgress}%` }}>
+                 <span className="text-xl">📅</span>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-[0.6rem] font-black text-gray-400 uppercase tracking-widest opacity-50">سباق الشهر</span>
+              </div>
+            </div>
+            
+            <div className="mt-4 flex justify-between text-[0.6rem] font-black text-gray-400 uppercase">
+              <span>المحقق: {(monthlyEarnings || 0).toLocaleString()}</span>
+              <span>الهدف: {(data.settings.monthlyGoal || 0).toLocaleString()}</span>
+            </div>
+          </div>
+
           <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 text-gray-500 font-bold text-center">
             تطبيق محفظة السائق v3.0 Interactive
           </div>

@@ -1,0 +1,662 @@
+[
+  {
+    "id": 0,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "Project Documentation: MR Rider Wallet (High-Contrast Edition)\n1. Project Overview\nA financial tracking mobile application tailored for delivery riders in Mauritania. The app focuses on high visibility under direct sunlight, manual expense management, and a secure automated daily \"Vault\" system.\n\n2. Visual & UI Requirements (Sunlight Visibility)\nTheme: High-contrast light theme (Pastel backgrounds with dark bold text).\n\nTarget Environment: Optimized for outdoor use under intense sunlight and low screen brightness.\n\nLanguage: The entire interface must be in Arabic.\n\nCurrency: Mauritanian Ouguiya (MRU).\n\n3. Core Features & Controls\nDaily Goal (Top Corner - Gear Icon): A button to set the daily financial target.\n\nMain Dashboard (The 4 Action Buttons):\n\nEarnings (الكسب): Manual entry of income.\n\nOwner’s Share (نسبة صاحب الدراجة): Manual Entry only. The user decides when and how much to deduct (No automated percentage).\n\nFuel (الوقود): Button to log and deduct fuel costs.\n\nDaily Purchases (المشتريات اليومية): To track and deduct personal daily expenses from the total.\n\n4. The \"Vault\" System (الخزنة)\nAutomated Settlement: Every day at 12:00 AM, the app must calculate the net balance and transfer it to \"The Vault.\"\n\nReset: The daily dashboard resets to zero after the transfer.\n\nSecurity: The Vault is protected by a 4-digit PIN.\n\nInitial PIN: 0000 (User must be able to change this).\n\n5. Data Storage & Persistence (Important Technical Note)\nLocal Storage (No Server): The app must utilize a Local Database (e.g., SQLite, Room, or Hive) to store all financial history and Vault data directly on the phone's internal memory.\n\nOffline Functionality: The app must work 100% offline without the need for a server, hosting, or internet connection.\n\nPersistence: Data must remain safe if the phone is turned off or the app is closed.\n\nManual Backup Feature: Include a feature to export/import data as a small file (to be saved manually by the user) to prevent data loss if the app is uninstalled.",
+      "files": [],
+      "fileUploads": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1768636565,
+      "nanos": 96000000
+    }
+  },
+  {
+    "id": 1,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": ""
+    },
+    "createdTimestamp": {
+      "seconds": 1768636565,
+      "nanos": 96000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768636566,
+      "nanos": 301000000
+    }
+  },
+  {
+    "id": 2,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "metadata.json",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Project metadata configuration",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\n{\n  \"name\": \"MR Rider Wallet (محفظة السائق)\",\n  \"description\": \"تطبيق مالي لسائقي التوصيل في موريتانيا، مصمم للرؤية العالية تحت أشعة الشمس مع نظام الخزنة المؤمن.\",\n  \"requestFramePermissions\": []\n}\n"
+            }
+          ]
+        },
+        {
+          "path": "index.html",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Main HTML entry point with Tailwind and Arabic RTL support",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\n<!DOCTYPE html>\n<html lang=\"ar\" dir=\"rtl\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>MR Rider Wallet</title>\n    <script src=\"https://cdn.tailwindcss.com\"></script>\n    <link href=\"https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap\" rel=\"stylesheet\">\n    <style>\n        body {\n            font-family: 'Cairo', sans-serif;\n            -webkit-tap-highlight-color: transparent;\n        }\n    </style>\n</head>\n<body class=\"bg-[#F3F4F6] text-[#111827]\">\n    <div id=\"root\"></div>\n</body>\n</html>\n"
+            }
+          ]
+        },
+        {
+          "path": "types.ts",
+          "generationType": 0,
+          "isDone": true,
+          "description": "TypeScript definitions for the application",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nexport interface DailyStats {\n  date: string; // ISO Date YYYY-MM-DD\n  earnings: number;\n  ownerShare: number;\n  fuel: number;\n  purchases: number;\n  goal: number;\n}\n\nexport interface VaultEntry {\n  date: string;\n  amount: number;\n}\n\nexport interface AppSettings {\n  dailyGoal: number;\n  vaultPin: string;\n}\n\nexport interface AppData {\n  currentDay: DailyStats;\n  vault: VaultEntry[];\n  settings: AppSettings;\n  lastSettlementDate: string;\n}\n"
+            }
+          ]
+        },
+        {
+          "path": "constants.tsx",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Global constants and icons",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React from 'react';\n\nexport const CURRENCY = \"أوقية\";\nexport const INITIAL_PIN = \"0000\";\n\nexport const Icons = {\n  Settings: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2.5\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><path d=\"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>\n  ),\n  Vault: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2.5\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"/><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"/></svg>\n  ),\n  Plus: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"3\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"/><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>\n  ),\n  Minus: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"3\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>\n  ),\n  History: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2.5\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><path d=\"M3 3v5h5\"/><path d=\"M3.05 13A9 9 0 1 0 6 5.3L3 8\"/></svg>\n  )\n};\n"
+            }
+          ]
+        },
+        {
+          "path": "services/storage.ts",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Local storage persistence layer",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport { AppData, DailyStats } from '../types';\nimport { INITIAL_PIN } from '../constants';\n\nconst STORAGE_KEY = 'mr_rider_wallet_data';\n\nconst createNewDay = (goal: number): DailyStats => ({\n  date: new Date().toISOString().split('T')[0],\n  earnings: 0,\n  ownerShare: 0,\n  fuel: 0,\n  purchases: 0,\n  goal: goal\n});\n\nexport const getInitialData = (): AppData => {\n  const stored = localStorage.getItem(STORAGE_KEY);\n  if (stored) {\n    const data = JSON.parse(stored) as AppData;\n    // Check if we need a settlement (new day)\n    const today = new Date().toISOString().split('T')[0];\n    if (data.currentDay.date !== today) {\n       // Automatic Settlement\n       const net = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases);\n       if (net > 0) {\n         data.vault.push({ date: data.currentDay.date, amount: net });\n       }\n       data.currentDay = createNewDay(data.settings.dailyGoal);\n       data.lastSettlementDate = today;\n       saveData(data);\n    }\n    return data;\n  }\n  \n  const defaultData: AppData = {\n    currentDay: createNewDay(5000),\n    vault: [],\n    settings: {\n      dailyGoal: 5000,\n      vaultPin: INITIAL_PIN\n    },\n    lastSettlementDate: new Date().toISOString().split('T')[0]\n  };\n  saveData(defaultData);\n  return defaultData;\n};\n\nexport const saveData = (data: AppData) => {\n  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));\n};\n\nexport const exportData = (data: AppData) => {\n  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });\n  const url = URL.createObjectURL(blob);\n  const a = document.createElement('a');\n  a.href = url;\n  a.download = `rider_wallet_backup_${new Date().toISOString().split('T')[0]}.json`;\n  a.click();\n};\n"
+            }
+          ]
+        },
+        {
+          "path": "components/Keypad.tsx",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Custom numeric keypad for quick input",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React from 'react';\n\ninterface KeypadProps {\n  onInput: (val: string) => void;\n  onClear: () => void;\n  onConfirm: () => void;\n  title: string;\n  value: string;\n}\n\nconst Keypad: React.FC<KeypadProps> = ({ onInput, onClear, onConfirm, title, value }) => {\n  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '✓'];\n\n  return (\n    <div className=\"bg-white p-6 rounded-t-3xl shadow-2xl fixed bottom-0 left-0 right-0 z-50\">\n      <div className=\"text-center mb-4\">\n        <h3 className=\"text-xl font-bold text-gray-800\">{title}</h3>\n        <div className=\"text-4xl font-black text-blue-600 mt-2 tracking-widest\">\n          {value || '0'} <span className=\"text-sm font-normal text-gray-500\">أوقية</span>\n        </div>\n      </div>\n      <div className=\"grid grid-cols-3 gap-3\">\n        {keys.map((key) => (\n          <button\n            key={key}\n            onClick={() => {\n              if (key === 'C') onClear();\n              else if (key === '✓') onConfirm();\n              else onInput(key);\n            }}\n            className={`\n              h-16 flex items-center justify-center text-2xl font-bold rounded-xl active:scale-95 transition-transform\n              ${key === 'C' ? 'bg-red-100 text-red-600' : key === '✓' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-800'}\n            `}\n          >\n            {key}\n          </button>\n        ))}\n      </div>\n    </div>\n  );\n};\n\nexport default Keypad;\n"
+            }
+          ]
+        },
+        {
+          "path": "App.tsx",
+          "generationType": 0,
+          "isDone": true,
+          "description": "Main application logic and high-contrast UI",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React, { useState, useEffect, useCallback } from 'react';\nimport { AppData, DailyStats } from './types';\nimport { getInitialData, saveData, exportData } from './services/storage';\nimport { Icons, CURRENCY } from './constants';\nimport Keypad from './components/Keypad';\n\nconst App: React.FC = () => {\n  const [data, setData] = useState<AppData | null>(null);\n  const [activeInput, setActiveInput] = useState<{ type: keyof DailyStats | 'pin' | 'goal', title: string } | null>(null);\n  const [inputValue, setInputValue] = useState('');\n  const [showVault, setShowVault] = useState(false);\n  const [vaultUnlocked, setVaultUnlocked] = useState(false);\n  const [showSettings, setShowSettings] = useState(false);\n\n  useEffect(() => {\n    setData(getInitialData());\n  }, []);\n\n  const handleUpdateValue = useCallback(() => {\n    if (!data || !activeInput) return;\n    \n    const numValue = parseInt(inputValue) || 0;\n    const newData = { ...data };\n\n    if (activeInput.type === 'pin') {\n       if (inputValue === data.settings.vaultPin) {\n         setVaultUnlocked(true);\n         setActiveInput(null);\n         setInputValue('');\n       } else {\n         alert('رمز PIN غير صحيح');\n         setInputValue('');\n       }\n       return;\n    }\n\n    if (activeInput.type === 'goal') {\n      newData.settings.dailyGoal = numValue;\n      newData.currentDay.goal = numValue;\n    } else {\n      // For earnings/expenses, we add to the existing daily total\n      const field = activeInput.type as keyof DailyStats;\n      (newData.currentDay[field] as number) += numValue;\n    }\n\n    setData(newData);\n    saveData(newData);\n    setActiveInput(null);\n    setInputValue('');\n  }, [data, activeInput, inputValue]);\n\n  if (!data) return <div className=\"p-10 text-center font-bold\">جاري التحميل...</div>;\n\n  const netBalance = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases);\n  const progress = Math.min((netBalance / data.currentDay.goal) * 100, 100);\n\n  return (\n    <div className=\"min-h-screen max-w-md mx-auto bg-white flex flex-col p-4 pb-24\">\n      {/* Header */}\n      <div className=\"flex justify-between items-center mb-6\">\n        <button \n          onClick={() => setShowSettings(true)}\n          className=\"p-3 bg-gray-100 rounded-full text-gray-800 border-2 border-gray-200\"\n        >\n          <Icons.Settings />\n        </button>\n        <div className=\"text-center\">\n          <h1 className=\"text-2xl font-black text-gray-900\">محفظة السائق</h1>\n          <p className=\"text-gray-500 font-bold\">{data.currentDay.date}</p>\n        </div>\n        <button \n          onClick={() => {\n            setShowVault(true);\n            setVaultUnlocked(false);\n            setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' });\n          }}\n          className=\"p-3 bg-yellow-100 rounded-full text-yellow-700 border-2 border-yellow-200\"\n        >\n          <Icons.Vault />\n        </button>\n      </div>\n\n      {/* Goal Progress */}\n      <div className=\"bg-[#FFFBEB] border-4 border-[#FBBF24] rounded-2xl p-6 mb-6 shadow-sm\">\n        <div className=\"flex justify-between items-end mb-2\">\n          <span className=\"text-lg font-black text-gray-800\">الهدف اليومي: {data.currentDay.goal} {CURRENCY}</span>\n          <span className=\"text-2xl font-black text-amber-600\">{Math.round(progress)}%</span>\n        </div>\n        <div className=\"w-full bg-amber-200 rounded-full h-6 overflow-hidden border-2 border-amber-300\">\n          <div \n            className=\"bg-amber-500 h-full transition-all duration-500\" \n            style={{ width: `${progress}%` }}\n          />\n        </div>\n      </div>\n\n      {/* Net Balance Display */}\n      <div className=\"bg-blue-600 rounded-3xl p-8 text-white mb-8 shadow-xl border-b-8 border-blue-800\">\n        <p className=\"text-blue-100 font-bold mb-1 text-lg\">الرصيد الصافي الحالي</p>\n        <h2 className=\"text-5xl font-black tracking-tight\">\n          {netBalance.toLocaleString()} <span className=\"text-xl\">{CURRENCY}</span>\n        </h2>\n      </div>\n\n      {/* Action Grid */}\n      <div className=\"grid grid-cols-2 gap-4 flex-grow\">\n        <ActionButton \n          label=\"الكسب\" \n          icon={<Icons.Plus />} \n          color=\"bg-green-100\" \n          textColor=\"text-green-800\"\n          borderColor=\"border-green-300\"\n          value={data.currentDay.earnings}\n          onClick={() => setActiveInput({ type: 'earnings', title: 'إضافة مبلغ الكسب' })}\n        />\n        <ActionButton \n          label=\"نسبة المالك\" \n          icon={<Icons.Minus />} \n          color=\"bg-red-100\" \n          textColor=\"text-red-800\"\n          borderColor=\"border-red-300\"\n          value={data.currentDay.ownerShare}\n          onClick={() => setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك' })}\n        />\n        <ActionButton \n          label=\"الوقود\" \n          icon={<Icons.Minus />} \n          color=\"bg-orange-100\" \n          textColor=\"text-orange-800\"\n          borderColor=\"border-orange-300\"\n          value={data.currentDay.fuel}\n          onClick={() => setActiveInput({ type: 'fuel', title: 'خصم مصاريف الوقود' })}\n        />\n        <ActionButton \n          label=\"مشتريات\" \n          icon={<Icons.Minus />} \n          color=\"bg-purple-100\" \n          textColor=\"text-purple-800\"\n          borderColor=\"border-purple-300\"\n          value={data.currentDay.purchases}\n          onClick={() => setActiveInput({ type: 'purchases', title: 'خصم المشتريات اليومية' })}\n        />\n      </div>\n\n      {/* Modals & Overlays */}\n      {activeInput && (\n        <div className=\"fixed inset-0 bg-black/50 z-40 backdrop-blur-sm\" onClick={() => {\n          if (activeInput.type !== 'pin') setActiveInput(null);\n        }}>\n          <div onClick={e => e.stopPropagation()}>\n            <Keypad \n              title={activeInput.title}\n              value={inputValue}\n              onInput={(v) => setInputValue(prev => prev + v)}\n              onClear={() => setInputValue('')}\n              onConfirm={handleUpdateValue}\n            />\n          </div>\n        </div>\n      )}\n\n      {showVault && vaultUnlocked && (\n        <div className=\"fixed inset-0 bg-white z-50 overflow-y-auto p-6\">\n          <div className=\"flex justify-between items-center mb-6\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الخزنة (المدخرات)</h2>\n            <button onClick={() => setShowVault(false)} className=\"text-gray-500 font-bold text-lg\">إغلاق</button>\n          </div>\n          <div className=\"bg-yellow-50 border-4 border-yellow-200 rounded-2xl p-6 mb-6\">\n            <p className=\"text-yellow-800 font-bold mb-1\">إجمالي الخزنة</p>\n            <h3 className=\"text-4xl font-black text-yellow-600\">\n              {data.vault.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} {CURRENCY}\n            </h3>\n          </div>\n          <div className=\"space-y-4\">\n            <h4 className=\"font-black text-gray-500 border-b pb-2\">سجل التحويلات اليومية</h4>\n            {data.vault.length === 0 && <p className=\"text-center text-gray-400 py-10\">لا توجد سجلات بعد</p>}\n            {[...data.vault].reverse().map((entry, idx) => (\n              <div key={idx} className=\"flex justify-between items-center p-4 bg-gray-50 rounded-xl border-2 border-gray-100\">\n                <span className=\"font-bold text-gray-600\">{entry.date}</span>\n                <span className=\"font-black text-green-700\">+{entry.amount} {CURRENCY}</span>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {showSettings && (\n        <div className=\"fixed inset-0 bg-white z-50 p-6\">\n           <div className=\"flex justify-between items-center mb-10\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الإعدادات</h2>\n            <button onClick={() => setShowSettings(false)} className=\"text-gray-500 font-bold text-lg\">إغلاق</button>\n          </div>\n          \n          <div className=\"space-y-8\">\n            <section>\n              <h3 className=\"text-lg font-black mb-4 text-gray-800\">الأمان والبيانات</h3>\n              <div className=\"space-y-4\">\n                <button \n                  onClick={() => setActiveInput({ type: 'goal', title: 'تعديل الهدف اليومي' })}\n                  className=\"w-full text-right p-4 bg-gray-100 rounded-xl font-bold flex justify-between items-center\"\n                >\n                   <span>تعديل الهدف اليومي</span>\n                   <span className=\"text-blue-600\">{data.settings.dailyGoal} {CURRENCY}</span>\n                </button>\n                <button \n                   onClick={() => exportData(data)}\n                   className=\"w-full text-right p-4 bg-blue-100 text-blue-800 rounded-xl font-bold border-2 border-blue-200\"\n                >\n                  تصدير نسخة احتياطية (Backup)\n                </button>\n                <div className=\"p-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl\">\n                  <p className=\"text-sm text-gray-500\">ملاحظة: يتم تصفير العداد يومياً الساعة 12:00 ليلاً ونقل الصافي للخزنة تلقائياً.</p>\n                </div>\n              </div>\n            </section>\n          </div>\n        </div>\n      )}\n    </div>\n  );\n};\n\ninterface ActionButtonProps {\n  label: string;\n  icon: React.ReactNode;\n  color: string;\n  textColor: string;\n  borderColor: string;\n  value: number;\n  onClick: () => void;\n}\n\nconst ActionButton: React.FC<ActionButtonProps> = ({ label, icon, color, textColor, borderColor, value, onClick }) => {\n  return (\n    <button \n      onClick={onClick}\n      className={`${color} ${borderColor} border-4 rounded-3xl p-4 flex flex-col justify-between items-start h-36 active:scale-95 transition-transform shadow-sm`}\n    >\n      <div className={`${textColor} bg-white/50 p-2 rounded-lg`}>{icon}</div>\n      <div className=\"text-right w-full\">\n        <p className={`${textColor} font-black text-lg`}>{label}</p>\n        <p className={`${textColor} font-bold opacity-80 text-sm`}>{value.toLocaleString()} {CURRENCY}</p>\n      </div>\n    </button>\n  );\n};\n\nexport default App;\n"
+            }
+          ]
+        },
+        {
+          "path": "index.tsx",
+          "generationType": 0,
+          "isDone": true,
+          "description": "App entry point",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nconst rootElement = document.getElementById('root');\nif (!rootElement) {\n  throw new Error(\"Could not find root element to mount to\");\n}\n\nconst root = ReactDOM.createRoot(rootElement);\nroot.render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1768636566,
+      "nanos": 301000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768636566,
+      "nanos": 798000000
+    }
+  },
+  {
+    "id": 3,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "Project Name: MR Rider Wallet (Interactive Edition) Currency: Mauritanian Ouguiya (MRU) Language: Arabic Storage: 100% Local (Internal Phone Memory)\n\n1. Visual & Interactive Dashboard (واجهة تفاعلية)\nDynamic Goal Setting: The user must be able to edit the \"Daily Goal\" at any time.\n\nProgress Visualization (شريط الحماس): A visual progress bar that reflects how close the user is to their daily goal.\n\nInteraction: The bar changes color dynamically—it starts red/orange and becomes greener and brighter as the user adds earnings and approaches the target.\n\nThe 4 Action Buttons with Emojis: Replace standard +/- signs with clear, recognizable emojis:\n\nEarnings (الكسب): 💰 (Money Bag)\n\nOwner’s Share (نسبة صاحب الدراجة): 🔑 (Key - symbolizing the bike ownership)\n\nFuel (الوقود): ⛽ (Fuel Pump)\n\nDaily Purchases (المشتريات اليومية): 🛒 (Shopping Cart)\n\n2. Functional Requirements\nManual Entry: When clicking any of the four buttons, a clean input field appears for the user to type the amount.\n\nVault Security (الخزنة): Automated transfer at 12:00 AM. Access restricted by a 4-digit PIN (Default: 0000).\n\nEditing: Users can modify the goal amount instantly, and the progress bar must update its percentage and color immediately.\n\n3. Technical Persistence (Data Safety)\nZero-Server Architecture: All data (Vault history, daily logs, and settings) must be stored using a Local Database (SQLite/Room/Hive) to ensure it is never deleted when the app closes or the phone restarts.\n\nManual Backup: A simple button to export the data to a local file for safety.",
+      "files": [],
+      "fileUploads": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1768637012,
+      "nanos": 363000000
+    }
+  },
+  {
+    "id": 4,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": "",
+      "errorWhileThinking": true
+    },
+    "createdTimestamp": {
+      "seconds": 1768637012,
+      "nanos": 363000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637012,
+      "nanos": 754000000
+    }
+  },
+  {
+    "id": 5,
+    "author": "model",
+    "payload": {
+      "type": "error",
+      "error": "An internal error occurred.",
+      "metadata": {
+        "message": "Failed to run code assistant. Please try again."
+      },
+      "isCancelError": false,
+      "isLoopingError": false
+    },
+    "createdTimestamp": {
+      "seconds": 1768637012,
+      "nanos": 754000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637012,
+      "nanos": 754000000
+    }
+  },
+  {
+    "id": 6,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "There was an unexpected error. Finish what you were doing.",
+      "files": [],
+      "fileUploads": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1768637030,
+      "nanos": 90000000
+    }
+  },
+  {
+    "id": 7,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": ""
+    },
+    "createdTimestamp": {
+      "seconds": 1768637030,
+      "nanos": 90000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637031,
+      "nanos": 265000000
+    }
+  },
+  {
+    "id": 8,
+    "author": "model",
+    "payload": {
+      "type": "text",
+      "text": "I will now update the application to the \"Interactive Edition\" specification. \n\n### Specification Updates:\n1.  **Dynamic Goal Control**: Added a clickable \"Edit\" area on the daily goal card to trigger the keypad for instant updates.\n2.  **Interactive Progress Bar**: Implemented a dynamic \"Heat Bar\" that transitions through colors (Red/Orange → Yellow → Bright Green) based on progress percentage.\n3.  **Emoji Action Buttons**: Replaced SVG icons with high-visibility emojis (💰, 🔑, ⛽, 🛒) as requested for better sunlight recognition.\n4.  **UI Refinements**: Enhanced contrast and spacing for outdoor use, and ensured the 12:00 AM settlement logic remains robust within the local storage service.\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1768637031,
+      "nanos": 265000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637031,
+      "nanos": 356000000
+    }
+  },
+  {
+    "id": 9,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "App.tsx",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Update UI to Interactive Edition with dynamic progress bar, emoji icons, and editable goals.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React, { useState, useEffect, useCallback } from 'react';\nimport { AppData, DailyStats } from './types';\nimport { getInitialData, saveData, exportData } from './services/storage';\nimport { Icons, CURRENCY } from './constants';\nimport Keypad from './components/Keypad';\n\nconst App: React.FC = () => {\n  const [data, setData] = useState<AppData | null>(null);\n  const [activeInput, setActiveInput] = useState<{ type: keyof DailyStats | 'pin' | 'goal', title: string } | null>(null);\n  const [inputValue, setInputValue] = useState('');\n  const [showVault, setShowVault] = useState(false);\n  const [vaultUnlocked, setVaultUnlocked] = useState(false);\n  const [showSettings, setShowSettings] = useState(false);\n\n  useEffect(() => {\n    setData(getInitialData());\n  }, []);\n\n  const handleUpdateValue = useCallback(() => {\n    if (!data || !activeInput) return;\n    \n    const numValue = parseInt(inputValue) || 0;\n    const newData = { ...data };\n\n    if (activeInput.type === 'pin') {\n       if (inputValue === data.settings.vaultPin) {\n         setVaultUnlocked(true);\n         setActiveInput(null);\n         setInputValue('');\n       } else {\n         alert('رمز PIN غير صحيح');\n         setInputValue('');\n       }\n       return;\n    }\n\n    if (activeInput.type === 'goal') {\n      newData.settings.dailyGoal = numValue;\n      newData.currentDay.goal = numValue;\n    } else {\n      const field = activeInput.type as keyof DailyStats;\n      (newData.currentDay[field] as number) += numValue;\n    }\n\n    setData(newData);\n    saveData(newData);\n    setActiveInput(null);\n    setInputValue('');\n  }, [data, activeInput, inputValue]);\n\n  if (!data) return <div className=\"p-10 text-center font-bold\">جاري التحميل...</div>;\n\n  const netBalance = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases);\n  const progress = Math.min((netBalance / data.currentDay.goal) * 100, 100);\n\n  // Dynamic color for the progress bar\n  const getProgressColor = (pct: number) => {\n    if (pct < 30) return 'bg-red-500';\n    if (pct < 60) return 'bg-orange-500';\n    if (pct < 90) return 'bg-yellow-500';\n    return 'bg-green-500';\n  };\n\n  const getProgressBg = (pct: number) => {\n    if (pct < 30) return 'bg-red-100 border-red-200';\n    if (pct < 60) return 'bg-orange-100 border-orange-200';\n    if (pct < 90) return 'bg-yellow-100 border-yellow-200';\n    return 'bg-green-100 border-green-200';\n  };\n\n  return (\n    <div className=\"min-h-screen max-w-md mx-auto bg-white flex flex-col p-4 pb-24 select-none\">\n      {/* Header */}\n      <div className=\"flex justify-between items-center mb-6\">\n        <button \n          onClick={() => setShowSettings(true)}\n          className=\"p-3 bg-gray-100 rounded-2xl text-gray-800 border-2 border-gray-200 active:bg-gray-200\"\n        >\n          <Icons.Settings />\n        </button>\n        <div className=\"text-center\">\n          <h1 className=\"text-2xl font-black text-gray-900\">محفظة السائق</h1>\n          <p className=\"text-gray-500 font-bold\">{data.currentDay.date}</p>\n        </div>\n        <button \n          onClick={() => {\n            setShowVault(true);\n            setVaultUnlocked(false);\n            setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' });\n          }}\n          className=\"p-3 bg-yellow-400 rounded-2xl text-yellow-950 border-2 border-yellow-500 active:bg-yellow-500\"\n        >\n          <Icons.Vault />\n        </button>\n      </div>\n\n      {/* Interactive Goal Progress */}\n      <div \n        onClick={() => setActiveInput({ type: 'goal', title: 'تعديل الهدف اليومي' })}\n        className={`${getProgressBg(progress)} border-4 rounded-3xl p-6 mb-6 shadow-md transition-colors duration-500 active:scale-[0.98] cursor-pointer`}\n      >\n        <div className=\"flex justify-between items-end mb-3\">\n          <div>\n            <span className=\"text-xs font-black uppercase tracking-wider text-gray-500 block mb-1\">الهدف الحالي</span>\n            <span className=\"text-xl font-black text-gray-900\">{data.currentDay.goal.toLocaleString()} {CURRENCY}</span>\n          </div>\n          <div className=\"text-right\">\n             <span className=\"text-3xl font-black text-gray-900 leading-none\">{Math.round(progress)}%</span>\n          </div>\n        </div>\n        <div className=\"w-full bg-black/10 rounded-full h-8 overflow-hidden border-2 border-black/5 p-1\">\n          <div \n            className={`${getProgressColor(progress)} h-full rounded-full transition-all duration-700 ease-out shadow-inner`} \n            style={{ width: `${progress}%` }}\n          />\n        </div>\n        <p className=\"text-center text-xs font-bold text-gray-600 mt-3 italic\">انقر لتعديل الهدف ✎</p>\n      </div>\n\n      {/* Net Balance Display */}\n      <div className=\"bg-[#1e293b] rounded-[2.5rem] p-8 text-white mb-8 shadow-2xl border-b-[10px] border-[#0f172a] relative overflow-hidden\">\n        <div className=\"absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16\"></div>\n        <p className=\"text-blue-200 font-bold mb-1 text-lg\">الرصيد المتبقي (الصافي)</p>\n        <h2 className=\"text-5xl font-black tracking-tight flex items-baseline gap-2\">\n          {netBalance.toLocaleString()} <span className=\"text-xl font-bold opacity-60\">{CURRENCY}</span>\n        </h2>\n      </div>\n\n      {/* Action Grid with Emojis */}\n      <div className=\"grid grid-cols-2 gap-4 flex-grow\">\n        <ActionButton \n          label=\"الكسب\" \n          emoji=\"💰\" \n          color=\"bg-green-50\" \n          textColor=\"text-green-900\"\n          borderColor=\"border-green-400\"\n          value={data.currentDay.earnings}\n          onClick={() => setActiveInput({ type: 'earnings', title: 'إضافة مبلغ الكسب' })}\n        />\n        <ActionButton \n          label=\"نسبة المالك\" \n          emoji=\"🔑\" \n          color=\"bg-red-50\" \n          textColor=\"text-red-900\"\n          borderColor=\"border-red-400\"\n          value={data.currentDay.ownerShare}\n          onClick={() => setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك' })}\n        />\n        <ActionButton \n          label=\"الوقود\" \n          emoji=\"⛽\" \n          color=\"bg-orange-50\" \n          textColor=\"text-orange-900\"\n          borderColor=\"border-orange-400\"\n          value={data.currentDay.fuel}\n          onClick={() => setActiveInput({ type: 'fuel', title: 'خصم مصاريف الوقود' })}\n        />\n        <ActionButton \n          label=\"المشتريات\" \n          emoji=\"🛒\" \n          color=\"bg-indigo-50\" \n          textColor=\"text-indigo-900\"\n          borderColor=\"border-indigo-400\"\n          value={data.currentDay.purchases}\n          onClick={() => setActiveInput({ type: 'purchases', title: 'خصم المشتريات اليومية' })}\n        />\n      </div>\n\n      {/* Modals & Overlays */}\n      {activeInput && (\n        <div className=\"fixed inset-0 bg-black/60 z-[60] backdrop-blur-md flex items-end\" onClick={() => {\n          if (activeInput.type !== 'pin') setActiveInput(null);\n        }}>\n          <div className=\"w-full\" onClick={e => e.stopPropagation()}>\n            <Keypad \n              title={activeInput.title}\n              value={inputValue}\n              onInput={(v) => setInputValue(prev => prev + v)}\n              onClear={() => setInputValue('')}\n              onConfirm={handleUpdateValue}\n            />\n          </div>\n        </div>\n      )}\n\n      {showVault && vaultUnlocked && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[70] overflow-y-auto\">\n          <div className=\"p-6\">\n            <div className=\"flex justify-between items-center mb-8\">\n              <h2 className=\"text-3xl font-black text-gray-900\">الخزنة 🏦</h2>\n              <button onClick={() => setShowVault(false)} className=\"p-2 bg-gray-200 rounded-xl font-black text-gray-700 px-4\">إغلاق</button>\n            </div>\n            <div className=\"bg-yellow-400 border-4 border-yellow-500 rounded-[2rem] p-8 mb-8 shadow-lg text-yellow-950\">\n              <p className=\"font-bold mb-1 text-lg opacity-80\">إجمالي المدخرات</p>\n              <h3 className=\"text-5xl font-black\">\n                {data.vault.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} <span className=\"text-xl\">{CURRENCY}</span>\n              </h3>\n            </div>\n            <div className=\"space-y-4\">\n              <h4 className=\"font-black text-gray-500 border-b-2 border-gray-200 pb-2\">السجل التاريخي</h4>\n              {data.vault.length === 0 && <div className=\"text-center text-gray-400 py-16 text-lg font-bold\">الخزنة فارغة حالياً</div>}\n              {[...data.vault].reverse().map((entry, idx) => (\n                <div key={idx} className=\"flex justify-between items-center p-5 bg-white rounded-2xl border-2 border-gray-200 shadow-sm\">\n                  <span className=\"font-bold text-gray-500\">{entry.date}</span>\n                  <span className=\"font-black text-green-600 text-xl\">+{entry.amount.toLocaleString()}</span>\n                </div>\n              ))}\n            </div>\n          </div>\n        </div>\n      )}\n\n      {showSettings && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[70] p-6\">\n           <div className=\"flex justify-between items-center mb-10\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الإعدادات ⚙️</h2>\n            <button onClick={() => setShowSettings(false)} className=\"p-2 bg-gray-200 rounded-xl font-black text-gray-700 px-4\">إغلاق</button>\n          </div>\n          \n          <div className=\"space-y-6\">\n            <div className=\"bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm\">\n              <h3 className=\"text-lg font-black mb-4 text-gray-800\">إدارة البيانات</h3>\n              <div className=\"space-y-3\">\n                <button \n                   onClick={() => exportData(data)}\n                   className=\"w-full text-right p-5 bg-blue-600 text-white rounded-2xl font-black text-lg shadow-lg border-b-4 border-blue-800 active:translate-y-1 active:border-b-0 transition-all\"\n                >\n                  حفظ نسخة احتياطية (Export)\n                </button>\n                <div className=\"p-4 bg-orange-50 border-2 border-orange-200 rounded-2xl flex items-start gap-3\">\n                  <span className=\"text-2xl\">ℹ️</span>\n                  <p className=\"text-sm text-orange-900 font-bold leading-relaxed\">\n                    يتم ترحيل الأموال تلقائياً للخزنة يومياً عند الساعة 12:00 ليلاً. تأكد من إدخال جميع مبالغك قبل نهاية اليوم.\n                  </p>\n                </div>\n              </div>\n            </div>\n          </div>\n        </div>\n      )}\n    </div>\n  );\n};\n\ninterface ActionButtonProps {\n  label: string;\n  emoji: string;\n  color: string;\n  textColor: string;\n  borderColor: string;\n  value: number;\n  onClick: () => void;\n}\n\nconst ActionButton: React.FC<ActionButtonProps> = ({ label, emoji, color, textColor, borderColor, value, onClick }) => {\n  return (\n    <button \n      onClick={onClick}\n      className={`${color} ${borderColor} border-4 rounded-[2rem] p-5 flex flex-col justify-between items-start h-40 active:scale-95 transition-all shadow-sm group hover:shadow-md`}\n    >\n      <div className=\"text-4xl filter drop-shadow-sm group-active:scale-125 transition-transform\">{emoji}</div>\n      <div className=\"text-right w-full\">\n        <p className={`${textColor} font-black text-lg mb-1`}>{label}</p>\n        <p className={`${textColor} font-black bg-white/60 inline-block px-2 py-0.5 rounded-lg text-sm border border-black/5`}>\n          {value.toLocaleString()} {CURRENCY}\n        </p>\n      </div>\n    </button>\n  );\n};\n\nexport default App;\n"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1768637032,
+      "nanos": 203000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637049,
+      "nanos": 453000000
+    }
+  },
+  {
+    "id": 10,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "1. Sequential Entry Logic (Earnings & Deductions):\n\nWhen the user clicks \"Earnings\" (💰) and enters an amount, a secondary field must appear immediately asking for the \"Company/Owner’s Share\" to be deducted from this specific entry.\n\nThe user will manually input the deduction amount, and the app should calculate the net value and update the daily total accordingly.\n\n2. Global \"Cancel/Back\" Functionality:\n\nA clear \"Cancel\" or \"Back\" button must be present on all input overlays (Earnings, Fuel, Purchases, and the Vault PIN screen).\n\nThis allows the user to exit any action or screen without saving data or making accidental changes.\n\n3. Fixed Security PIN:\n\nThe default and primary access code for the Vault section must be set to: 5492.",
+      "files": [],
+      "fileUploads": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1768637279,
+      "nanos": 842000000
+    }
+  },
+  {
+    "id": 11,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": ""
+    },
+    "createdTimestamp": {
+      "seconds": 1768637279,
+      "nanos": 842000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637281,
+      "nanos": 187000000
+    }
+  },
+  {
+    "id": 12,
+    "author": "model",
+    "payload": {
+      "type": "text",
+      "text": "I will update the application to implement the sequential entry logic for earnings, the updated security PIN, and enhanced \"Cancel\" functionality on all overlays.\n\n### Specification Updates:\n1.  **Sequential Earnings Flow**: When adding earnings, the user is now prompted with a two-step process: First \"Gross Earnings\", then immediately \"Deduction for Owner\". The final net is added to the balance.\n2.  **Security Update**: The default Vault PIN is updated to `5492`.\n3.  **Enhanced Navigation**: Added clear \"الغاء\" (Cancel) buttons to the Keypad overlay and Vault/Settings screens to ensure users can always retreat without accidental changes.\n4.  **UI Refinement**: Improved the transition between sequential inputs to maintain high visibility and ease of use under sunlight.\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1768637281,
+      "nanos": 187000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637281,
+      "nanos": 270000000
+    }
+  },
+  {
+    "id": 13,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "constants.tsx",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Update default security PIN to 5492.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React from 'react';\n\nexport const CURRENCY = \"أوقية\";\nexport const INITIAL_PIN = \"5492\";\n\nexport const Icons = {\n  Settings: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2.5\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><path d=\"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>\n  ),\n  Vault: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2.5\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"/><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"/></svg>\n  ),\n  Plus: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"3\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"/><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>\n  ),\n  Minus: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"3\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>\n  ),\n  History: () => (\n    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2.5\" strokeLinecap=\"round\" strokeLinejoin=\"round\"><path d=\"M3 3v5h5\"/><path d=\"M3.05 13A9 9 0 1 0 6 5.3L3 8\"/></svg>\n  )\n};\n"
+            }
+          ]
+        },
+        {
+          "path": "components/Keypad.tsx",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Add Cancel button to the keypad for global back functionality.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React from 'react';\n\ninterface KeypadProps {\n  onInput: (val: string) => void;\n  onClear: () => void;\n  onConfirm: () => void;\n  onCancel: () => void;\n  title: string;\n  value: string;\n}\n\nconst Keypad: React.FC<KeypadProps> = ({ onInput, onClear, onConfirm, onCancel, title, value }) => {\n  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '✓'];\n\n  return (\n    <div className=\"bg-white p-6 rounded-t-[3rem] shadow-2xl fixed bottom-0 left-0 right-0 z-50 border-t-8 border-gray-100\">\n      <div className=\"flex justify-between items-center mb-4 px-2\">\n        <button \n          onClick={onCancel}\n          className=\"bg-gray-100 text-gray-600 px-4 py-2 rounded-xl font-bold text-sm active:bg-gray-200\"\n        >\n          إلغاء ✕\n        </button>\n        <h3 className=\"text-xl font-black text-gray-800\">{title}</h3>\n      </div>\n      \n      <div className=\"text-center mb-6\">\n        <div className=\"text-5xl font-black text-blue-700 bg-blue-50 py-4 rounded-2xl tracking-tighter\">\n          {value || '0'} <span className=\"text-sm font-bold text-blue-400\">أوقية</span>\n        </div>\n      </div>\n\n      <div className=\"grid grid-cols-3 gap-4\">\n        {keys.map((key) => (\n          <button\n            key={key}\n            onClick={() => {\n              if (key === 'C') onClear();\n              else if (key === '✓') onConfirm();\n              else onInput(key);\n            }}\n            className={`\n              h-20 flex items-center justify-center text-3xl font-black rounded-2xl active:scale-95 transition-all\n              ${key === 'C' ? 'bg-orange-100 text-orange-600 border-b-4 border-orange-200' : \n                key === '✓' ? 'bg-green-600 text-white border-b-4 border-green-800' : \n                'bg-gray-100 text-gray-900 border-b-4 border-gray-300'}\n            `}\n          >\n            {key}\n          </button>\n        ))}\n      </div>\n    </div>\n  );\n};\n\nexport default Keypad;\n"
+            }
+          ]
+        },
+        {
+          "path": "App.tsx",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Implement sequential entry logic for earnings and owner share, and enhance cancel functionality.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React, { useState, useEffect, useCallback } from 'react';\nimport { AppData, DailyStats } from './types';\nimport { getInitialData, saveData, exportData } from './services/storage';\nimport { Icons, CURRENCY } from './constants';\nimport Keypad from './components/Keypad';\n\nconst App: React.FC = () => {\n  const [data, setData] = useState<AppData | null>(null);\n  const [activeInput, setActiveInput] = useState<{ \n    type: keyof DailyStats | 'pin' | 'goal' | 'tempEarnings', \n    title: string \n  } | null>(null);\n  const [inputValue, setInputValue] = useState('');\n  const [showVault, setShowVault] = useState(false);\n  const [vaultUnlocked, setVaultUnlocked] = useState(false);\n  const [showSettings, setShowSettings] = useState(false);\n  \n  // To store the temporary earnings amount before asking for the share\n  const [tempEarningsValue, setTempEarningsValue] = useState<number | null>(null);\n\n  useEffect(() => {\n    setData(getInitialData());\n  }, []);\n\n  const handleUpdateValue = useCallback(() => {\n    if (!data || !activeInput) return;\n    \n    const numValue = parseInt(inputValue) || 0;\n    const newData = { ...data };\n\n    if (activeInput.type === 'pin') {\n       if (inputValue === data.settings.vaultPin) {\n         setVaultUnlocked(true);\n         setActiveInput(null);\n         setInputValue('');\n       } else {\n         alert('رمز PIN غير صحيح');\n         setInputValue('');\n       }\n       return;\n    }\n\n    if (activeInput.type === 'goal') {\n      newData.settings.dailyGoal = numValue;\n      newData.currentDay.goal = numValue;\n    } else if (activeInput.type === 'tempEarnings') {\n      // Step 1: Just entered the earnings, now ask for share\n      setTempEarningsValue(numValue);\n      setInputValue('');\n      setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك من هذا الكسب' });\n      return;\n    } else if (activeInput.type === 'ownerShare' && tempEarningsValue !== null) {\n      // Step 2: Entered the owner share, update both\n      newData.currentDay.earnings += tempEarningsValue;\n      newData.currentDay.ownerShare += numValue;\n      setTempEarningsValue(null);\n    } else {\n      // Normal fuel/purchases or direct settings\n      const field = activeInput.type as keyof DailyStats;\n      (newData.currentDay[field] as number) += numValue;\n    }\n\n    setData(newData);\n    saveData(newData);\n    setActiveInput(null);\n    setInputValue('');\n  }, [data, activeInput, inputValue, tempEarningsValue]);\n\n  const handleCancel = useCallback(() => {\n    setActiveInput(null);\n    setInputValue('');\n    setTempEarningsValue(null);\n    if (showVault && !vaultUnlocked) setShowVault(false);\n  }, [showVault, vaultUnlocked]);\n\n  if (!data) return <div className=\"p-10 text-center font-bold\">جاري التحميل...</div>;\n\n  const netBalance = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases);\n  const progress = Math.min((netBalance / data.currentDay.goal) * 100, 100);\n\n  const getProgressColor = (pct: number) => {\n    if (pct < 30) return 'bg-red-500';\n    if (pct < 60) return 'bg-orange-500';\n    if (pct < 90) return 'bg-yellow-500';\n    return 'bg-green-500';\n  };\n\n  const getProgressBg = (pct: number) => {\n    if (pct < 30) return 'bg-red-100 border-red-200';\n    if (pct < 60) return 'bg-orange-100 border-orange-200';\n    if (pct < 90) return 'bg-yellow-100 border-yellow-200';\n    return 'bg-green-100 border-green-200';\n  };\n\n  return (\n    <div className=\"min-h-screen max-w-md mx-auto bg-[#F9FAFB] flex flex-col p-4 pb-24 select-none\">\n      {/* Header */}\n      <div className=\"flex justify-between items-center mb-6\">\n        <button \n          onClick={() => setShowSettings(true)}\n          className=\"p-3 bg-white rounded-2xl text-gray-800 border-2 border-gray-200 active:bg-gray-100 shadow-sm\"\n        >\n          <Icons.Settings />\n        </button>\n        <div className=\"text-center\">\n          <h1 className=\"text-2xl font-black text-gray-900 leading-none\">محفظة السائق</h1>\n          <p className=\"text-gray-500 font-bold text-sm mt-1\">{data.currentDay.date}</p>\n        </div>\n        <button \n          onClick={() => {\n            setShowVault(true);\n            setVaultUnlocked(false);\n            setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' });\n          }}\n          className=\"p-3 bg-yellow-400 rounded-2xl text-yellow-950 border-2 border-yellow-500 active:bg-yellow-500 shadow-sm\"\n        >\n          <Icons.Vault />\n        </button>\n      </div>\n\n      {/* Interactive Goal Progress */}\n      <div \n        onClick={() => setActiveInput({ type: 'goal', title: 'تعديل الهدف اليومي' })}\n        className={`${getProgressBg(progress)} border-4 rounded-[2.5rem] p-6 mb-6 shadow-md transition-colors duration-500 active:scale-[0.98] cursor-pointer`}\n      >\n        <div className=\"flex justify-between items-end mb-3\">\n          <div>\n            <span className=\"text-[0.65rem] font-black uppercase tracking-wider text-gray-500 block mb-0.5\">الهدف اليومي</span>\n            <span className=\"text-2xl font-black text-gray-900\">{data.currentDay.goal.toLocaleString()} <span className=\"text-xs font-bold opacity-60\">أوقية</span></span>\n          </div>\n          <div className=\"text-right\">\n             <span className=\"text-4xl font-black text-gray-900 leading-none\">{Math.round(progress)}%</span>\n          </div>\n        </div>\n        <div className=\"w-full bg-black/10 rounded-full h-10 overflow-hidden border-2 border-black/5 p-1.5 shadow-inner\">\n          <div \n            className={`${getProgressColor(progress)} h-full rounded-full transition-all duration-700 ease-out flex items-center justify-center`} \n            style={{ width: `${progress}%` }}\n          >\n            {progress > 15 && <div className=\"w-full h-full opacity-30 bg-gradient-to-r from-transparent via-white/50 to-transparent\"></div>}\n          </div>\n        </div>\n        <p className=\"text-center text-[0.65rem] font-black text-gray-600 mt-3 uppercase tracking-widest opacity-60\">اضغط هنا لتغيير الهدف</p>\n      </div>\n\n      {/* Net Balance Display */}\n      <div className=\"bg-[#1e293b] rounded-[3rem] p-8 text-white mb-8 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden\">\n        <div className=\"absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24 pointer-events-none\"></div>\n        <p className=\"text-blue-300 font-black mb-1 text-lg uppercase tracking-tight opacity-80\">الصافي المتبقي لك</p>\n        <h2 className=\"text-6xl font-black tracking-tighter flex items-baseline gap-2\">\n          {netBalance.toLocaleString()} <span className=\"text-xl font-bold opacity-40\">أوقية</span>\n        </h2>\n      </div>\n\n      {/* Action Grid */}\n      <div className=\"grid grid-cols-2 gap-4 flex-grow\">\n        <ActionButton \n          label=\"الكسب\" \n          emoji=\"💰\" \n          color=\"bg-green-50\" \n          textColor=\"text-green-900\"\n          borderColor=\"border-green-400\"\n          value={data.currentDay.earnings}\n          onClick={() => setActiveInput({ type: 'tempEarnings', title: 'إضافة مبلغ الكسب' })}\n        />\n        <ActionButton \n          label=\"نسبة المالك\" \n          emoji=\"🔑\" \n          color=\"bg-red-50\" \n          textColor=\"text-red-900\"\n          borderColor=\"border-red-400\"\n          value={data.currentDay.ownerShare}\n          onClick={() => setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك' })}\n        />\n        <ActionButton \n          label=\"الوقود\" \n          emoji=\"⛽\" \n          color=\"bg-orange-50\" \n          textColor=\"text-orange-900\"\n          borderColor=\"border-orange-400\"\n          value={data.currentDay.fuel}\n          onClick={() => setActiveInput({ type: 'fuel', title: 'خصم مصاريف الوقود' })}\n        />\n        <ActionButton \n          label=\"المشتريات\" \n          emoji=\"🛒\" \n          color=\"bg-indigo-50\" \n          textColor=\"text-indigo-900\"\n          borderColor=\"border-indigo-400\"\n          value={data.currentDay.purchases}\n          onClick={() => setActiveInput({ type: 'purchases', title: 'خصم المشتريات اليومية' })}\n        />\n      </div>\n\n      {/* Modals & Overlays */}\n      {activeInput && (\n        <div className=\"fixed inset-0 bg-black/70 z-[60] backdrop-blur-md flex items-end\" onClick={handleCancel}>\n          <div className=\"w-full\" onClick={e => e.stopPropagation()}>\n            <Keypad \n              title={activeInput.title}\n              value={inputValue}\n              onInput={(v) => setInputValue(prev => prev + v)}\n              onClear={() => setInputValue('')}\n              onConfirm={handleUpdateValue}\n              onCancel={handleCancel}\n            />\n          </div>\n        </div>\n      )}\n\n      {showVault && vaultUnlocked && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[70] overflow-y-auto\">\n          <div className=\"p-6\">\n            <div className=\"flex justify-between items-center mb-8\">\n              <h2 className=\"text-3xl font-black text-gray-900\">الخزنة 🏦</h2>\n              <button onClick={() => setShowVault(false)} className=\"p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6 active:bg-red-200\">رجوع ✕</button>\n            </div>\n            <div className=\"bg-yellow-400 border-4 border-yellow-500 rounded-[3rem] p-10 mb-8 shadow-xl text-yellow-950 relative overflow-hidden\">\n               <div className=\"absolute bottom-0 right-0 p-4 opacity-10 text-8xl\">🏦</div>\n              <p className=\"font-black mb-1 text-xl opacity-80 uppercase tracking-widest\">إجمالي المدخرات</p>\n              <h3 className=\"text-6xl font-black tracking-tighter\">\n                {data.vault.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} <span className=\"text-xl\">أوقية</span>\n              </h3>\n            </div>\n            <div className=\"space-y-4 pb-10\">\n              <h4 className=\"font-black text-gray-500 border-b-2 border-gray-200 pb-2 flex justify-between\">\n                <span>السجل التاريخي</span>\n                <span className=\"text-xs\">{data.vault.length} سجلات</span>\n              </h4>\n              {data.vault.length === 0 && <div className=\"text-center text-gray-400 py-20 text-lg font-bold italic\">لا يوجد سجلات في الخزنة حالياً</div>}\n              {[...data.vault].reverse().map((entry, idx) => (\n                <div key={idx} className=\"flex justify-between items-center p-6 bg-white rounded-3xl border-2 border-gray-100 shadow-sm\">\n                  <span className=\"font-bold text-gray-500\">{entry.date}</span>\n                  <span className=\"font-black text-green-700 text-2xl\">+{entry.amount.toLocaleString()}</span>\n                </div>\n              ))}\n            </div>\n          </div>\n        </div>\n      )}\n\n      {showSettings && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[70] p-6 overflow-y-auto\">\n           <div className=\"flex justify-between items-center mb-10\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الإعدادات ⚙️</h2>\n            <button onClick={() => setShowSettings(false)} className=\"p-3 bg-gray-200 rounded-2xl font-black text-gray-700 px-6 active:bg-gray-300\">رجوع ✕</button>\n          </div>\n          \n          <div className=\"space-y-8\">\n            <div className=\"bg-white p-8 rounded-[2.5rem] border-2 border-gray-100 shadow-sm\">\n              <h3 className=\"text-xl font-black mb-6 text-gray-800 border-r-4 border-blue-600 pr-3\">إدارة البيانات</h3>\n              <div className=\"space-y-4\">\n                <button \n                   onClick={() => exportData(data)}\n                   className=\"w-full text-right p-6 bg-blue-600 text-white rounded-[1.5rem] font-black text-xl shadow-lg border-b-8 border-blue-800 active:translate-y-1 active:border-b-4 transition-all\"\n                >\n                  تصدير نسخة احتياطية (Backup)\n                </button>\n                <div className=\"p-6 bg-orange-50 border-2 border-orange-200 rounded-3xl flex items-start gap-4\">\n                  <span className=\"text-3xl\">⚠️</span>\n                  <p className=\"text-sm text-orange-900 font-black leading-relaxed\">\n                    تحذير: يتم ترحيل الأموال تلقائياً للخزنة يومياً عند الساعة 12:00 ليلاً. الصافي = الكسب - (النسبة + الوقود + المشتريات).\n                  </p>\n                </div>\n              </div>\n            </div>\n            \n            <div className=\"p-6 text-center text-gray-400 font-bold text-sm\">\n              محفظة السائق v2.1 Interactive Edition\n            </div>\n          </div>\n        </div>\n      )}\n    </div>\n  );\n};\n\ninterface ActionButtonProps {\n  label: string;\n  emoji: string;\n  color: string;\n  textColor: string;\n  borderColor: string;\n  value: number;\n  onClick: () => void;\n}\n\nconst ActionButton: React.FC<ActionButtonProps> = ({ label, emoji, color, textColor, borderColor, value, onClick }) => {\n  return (\n    <button \n      onClick={onClick}\n      className={`${color} ${borderColor} border-4 rounded-[2.5rem] p-6 flex flex-col justify-between items-start h-44 active:scale-95 transition-all shadow-sm group hover:shadow-md border-b-8`}\n    >\n      <div className=\"text-5xl filter drop-shadow-md group-active:scale-125 transition-transform\">{emoji}</div>\n      <div className=\"text-right w-full\">\n        <p className={`${textColor} font-black text-xl mb-1`}>{label}</p>\n        <p className={`${textColor} font-black bg-white/70 inline-block px-3 py-1 rounded-xl text-xs border border-black/5 shadow-inner`}>\n          {value.toLocaleString()} <span className=\"text-[10px]\">أوقية</span>\n        </p>\n      </div>\n    </button>\n  );\n};\n\nexport default App;\n"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1768637282,
+      "nanos": 392000000
+    },
+    "doneTimestamp": {
+      "seconds": 1768637287,
+      "nanos": 868000000
+    }
+  },
+  {
+    "id": 14,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "- Set the default goal to 500 before making any changes.",
+      "files": [],
+      "fileUploads": [],
+      "cssBlocks": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770658717,
+      "nanos": 86000000
+    }
+  },
+  {
+    "id": 15,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": "**Defining the Default Value**\n\nI'm currently focused on setting the initial daily goal to 500 within the application. I've pinpointed `services/storage.ts` as the key file. Specifically, I'm examining how `createNewDay` and the `defaultData` object in `getInitial` are used to establish the baseline data when none is present in local storage. My next step will be modifying this default value.\n\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770658717,
+      "nanos": 86000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770658721,
+      "nanos": 261000000
+    }
+  },
+  {
+    "id": 16,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "services/storage.ts",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Update the default daily goal from 5000 to 500.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport { AppData, DailyStats } from '../types';\nimport { INITIAL_PIN } from '../constants';\n\nconst STORAGE_KEY = 'mr_rider_wallet_data';\n\nconst createNewDay = (goal: number): DailyStats => ({\n  date: new Date().toISOString().split('T')[0],\n  earnings: 0,\n  ownerShare: 0,\n  fuel: 0,\n  purchases: 0,\n  goal: goal\n});\n\nexport const getInitialData = (): AppData => {\n  const stored = localStorage.getItem(STORAGE_KEY);\n  if (stored) {\n    const data = JSON.parse(stored) as AppData;\n    // Check if we need a settlement (new day)\n    const today = new Date().toISOString().split('T')[0];\n    if (data.currentDay.date !== today) {\n       // Automatic Settlement\n       const net = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases);\n       if (net > 0) {\n         data.vault.push({ date: data.currentDay.date, amount: net });\n       }\n       data.currentDay = createNewDay(data.settings.dailyGoal);\n       data.lastSettlementDate = today;\n       saveData(data);\n    }\n    return data;\n  }\n  \n  const defaultData: AppData = {\n    currentDay: createNewDay(500),\n    vault: [],\n    settings: {\n      dailyGoal: 500,\n      vaultPin: INITIAL_PIN\n    },\n    lastSettlementDate: new Date().toISOString().split('T')[0]\n  };\n  saveData(defaultData);\n  return defaultData;\n};\n\nexport const saveData = (data: AppData) => {\n  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));\n};\n\nexport const exportData = (data: AppData) => {\n  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });\n  const url = URL.createObjectURL(blob);\n  const a = document.createElement('a');\n  a.href = url;\n  a.download = `rider_wallet_backup_${new Date().toISOString().split('T')[0]}.json`;\n  a.click();\n};\n"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1770658721,
+      "nanos": 264000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770658724,
+      "nanos": 133000000
+    }
+  },
+  {
+    "id": 17,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "- I want there to be additional buttons.\n- Instead of these four icons, I want there to be two new icons.\n- One icon is called \"Operations List.\"\n- It allows me to edit any operation I performed, whether I added a gain, a percentage discount, or added fuel.\n- For example, sometimes I put fuel in by mistake.\n- When you click on this icon, it opens a list of all the operations I performed.\n- And when I save, it goes into the archive.\n- I also want the sixth button to have a function for adding objectives or debts that need to be paid.\n- I want to be able to pay them.\n- This includes adding the objective itself, the amount needed for this objective, and from the remaining balance, I can pay it whenever I want.",
+      "files": [],
+      "fileUploads": [],
+      "cssBlocks": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770659161,
+      "nanos": 675000000
+    }
+  },
+  {
+    "id": 18,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": "**Adding New Action Buttons**\n\nOkay, I'm working on adding a couple of action buttons to the MR Rider Wallet app dashboard. I've got one sketched out: \"Operations List\" (قائمة العمليات). It's designed to give a quick overview of today's transactions – earnings, owner share, fuel purchases, and any other entries. Just making sure that covers the critical details for rapid review.\n\n\n**Expanding Operation Features**\n\nI'm now focused on enabling the editing and deletion of existing operations, and the impact on daily totals and storage. I'm also planning to implement objective tracking, where users can set financial goals, track their progress, and make payments towards them from their net balance. This necessitates new `objectives` state in `AppData`, and operation logging in `DailyStats` (or a sibling), which requires some new data models for `Operation` and `Objective` objects. The `Operation` model is detailed: `{ id: string, type: 'earnings' | 'ownerShare' | 'fuel' | 'purchases', amount: number, timestamp: string }`. The `Objective` model is: `{ id: string, title: string, targetAmount: number, paidAmount: number, isCompleted: boolean }`.\n\n\n**Defining New App Features**\n\nI'm now thinking about the visual layout for the new action buttons. I've decided on a 2-column, 3-row arrangement, resulting in 6 buttons total. I've also chosen appropriate emojis: 📋 (Clipboard) for \"Operations List\" and 🎯 (Target) for \"Objectives/Debts\". Next, I'll update `types.ts` to include `Operation` and `Objective` models and update `storage.ts` to handle the new data structure and any necessary migration. Finally, I'll update `App.tsx` to integrate the buttons and their related functionalities, including modals for operations and objectives, and ensure net balance updates. I'll need to figure out how to track \"Paid\" status for debt.\n\n\n**Refining Financial Actions**\n\nI'm now focusing on implementing payment tracking for objectives. Specifically, I'll add `objectivePayments` to `DailyStats` to reflect these transactions, as they are a deduction from the net balance. I'm also refining the Operations List to detail the format for entries. Also, I've updated the button actions.\n\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770659161,
+      "nanos": 675000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770659170,
+      "nanos": 412000000
+    }
+  },
+  {
+    "id": 19,
+    "author": "model",
+    "payload": {
+      "type": "text",
+      "text": "To satisfy your request, I will update the application to include the \"Operations List\" and \"Objectives/Debts\" features. This involves expanding the data model to track individual transactions (operations) and long-term financial goals (objectives).\n\n### Specification Updates:\n\n1.  **New Action Buttons**: \n    *   **📋 قائمة العمليات (Operations List)**: A new button to view, edit, or delete every transaction made during the day.\n    *   **🎯 الأهداف والديون (Objectives & Debts)**: A new button to manage long-term goals. Users can set a target amount and pay towards it from their net balance.\n\n2.  **Operations List Functionality**:\n    *   Displays a chronological list of all earnings, shares, fuel, and purchase entries for the current day.\n    *   Each entry can be **Edited** (triggers the keypad) or **Deleted**.\n    *   Any change automatically recalculates the daily totals and the progress bar.\n\n3.  **Objectives & Debts Functionality**:\n    *   **Add Objective**: Define a name (e.g., \"New Bike\") and a total target amount.\n    *   **Progress Tracking**: Each objective shows a mini progress bar of how much has been paid.\n    *   **Payments**: A \"Pay\" button allows the user to contribute an amount towards the objective. This payment is deducted from the daily \"Net Balance\" so it doesn't get sent to the vault tonight.\n\n4.  **UI/UX Refinements**:\n    *   Expanded the action grid to 6 buttons (3 rows of 2).\n    *   Added dedicated modals for the List and Objectives management.\n    *   Maintained the high-contrast, sun-readable theme.\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770659170,
+      "nanos": 412000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770659170,
+      "nanos": 581000000
+    }
+  },
+  {
+    "id": 20,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "types.ts",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Add Operation and Objective interfaces to support new features.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nexport type OperationType = 'earnings' | 'ownerShare' | 'fuel' | 'purchases' | 'objectivePayment';\n\nexport interface Operation {\n  id: string;\n  type: OperationType;\n  amount: number;\n  label: string;\n  timestamp: string;\n}\n\nexport interface Objective {\n  id: string;\n  title: string;\n  targetAmount: number;\n  paidAmount: number;\n  isCompleted: boolean;\n}\n\nexport interface DailyStats {\n  date: string; // ISO Date YYYY-MM-DD\n  earnings: number;\n  ownerShare: number;\n  fuel: number;\n  purchases: number;\n  objectivePayments: number;\n  goal: number;\n  operations: Operation[];\n}\n\nexport interface VaultEntry {\n  date: string;\n  amount: number;\n}\n\nexport interface AppSettings {\n  dailyGoal: number;\n  vaultPin: string;\n}\n\nexport interface AppData {\n  currentDay: DailyStats;\n  vault: VaultEntry[];\n  objectives: Objective[];\n  settings: AppSettings;\n  lastSettlementDate: string;\n}\n"
+            }
+          ]
+        },
+        {
+          "path": "services/storage.ts",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Update storage logic to initialize operations, objectives, and handle new daily payment field.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport { AppData, DailyStats } from '../types';\nimport { INITIAL_PIN } from '../constants';\n\nconst STORAGE_KEY = 'mr_rider_wallet_data_v3';\n\nconst createNewDay = (goal: number): DailyStats => ({\n  date: new Date().toISOString().split('T')[0],\n  earnings: 0,\n  ownerShare: 0,\n  fuel: 0,\n  purchases: 0,\n  objectivePayments: 0,\n  goal: goal,\n  operations: []\n});\n\nexport const getInitialData = (): AppData => {\n  const stored = localStorage.getItem(STORAGE_KEY);\n  if (stored) {\n    const data = JSON.parse(stored) as AppData;\n    const today = new Date().toISOString().split('T')[0];\n    if (data.currentDay.date !== today) {\n       // Automatic Settlement\n       const net = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0));\n       if (net > 0) {\n         data.vault.push({ date: data.currentDay.date, amount: net });\n       }\n       data.currentDay = createNewDay(data.settings.dailyGoal);\n       data.lastSettlementDate = today;\n       saveData(data);\n    }\n    // Migration: Ensure objectives and operations exist\n    if (!data.objectives) data.objectives = [];\n    if (!data.currentDay.operations) data.currentDay.operations = [];\n    return data;\n  }\n  \n  const defaultData: AppData = {\n    currentDay: createNewDay(500),\n    vault: [],\n    objectives: [],\n    settings: {\n      dailyGoal: 500,\n      vaultPin: INITIAL_PIN\n    },\n    lastSettlementDate: new Date().toISOString().split('T')[0]\n  };\n  saveData(defaultData);\n  return defaultData;\n};\n\nexport const saveData = (data: AppData) => {\n  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));\n};\n\nexport const exportData = (data: AppData) => {\n  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });\n  const url = URL.createObjectURL(blob);\n  const a = document.createElement('a');\n  a.href = url;\n  a.download = `rider_wallet_backup_${new Date().toISOString().split('T')[0]}.json`;\n  a.click();\n};\n"
+            }
+          ]
+        },
+        {
+          "path": "App.tsx",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Implementation of Operations List (edit/delete) and Objectives (add/pay) features with updated 6-button grid.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React, { useState, useEffect, useCallback } from 'react';\nimport { AppData, DailyStats, Operation, Objective, OperationType } from './types';\nimport { getInitialData, saveData, exportData } from './services/storage';\nimport { Icons, CURRENCY } from './constants';\nimport Keypad from './components/Keypad';\n\nconst App: React.FC = () => {\n  const [data, setData] = useState<AppData | null>(null);\n  const [activeInput, setActiveInput] = useState<{ \n    type: keyof DailyStats | 'pin' | 'goal' | 'tempEarnings' | 'editOperation' | 'newObjectiveAmount' | 'payObjective', \n    title: string,\n    operationId?: string,\n    objectiveId?: string\n  } | null>(null);\n  \n  const [inputValue, setInputValue] = useState('');\n  const [objectiveTitle, setObjectiveTitle] = useState('');\n  \n  const [showVault, setShowVault] = useState(false);\n  const [vaultUnlocked, setVaultUnlocked] = useState(false);\n  const [showSettings, setShowSettings] = useState(false);\n  const [showOpsList, setShowOpsList] = useState(false);\n  const [showObjectives, setShowObjectives] = useState(false);\n  \n  const [tempEarningsValue, setTempEarningsValue] = useState<number | null>(null);\n\n  useEffect(() => {\n    setData(getInitialData());\n  }, []);\n\n  const addOperation = (type: OperationType, amount: number, label: string) => {\n    if (!data) return;\n    const newOp: Operation = {\n      id: Math.random().toString(36).substr(2, 9),\n      type,\n      amount,\n      label,\n      timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n    };\n    data.currentDay.operations.push(newOp);\n  };\n\n  const handleUpdateValue = useCallback(() => {\n    if (!data || !activeInput) return;\n    \n    const numValue = parseInt(inputValue) || 0;\n    const newData = { ...data };\n\n    if (activeInput.type === 'pin') {\n       if (inputValue === data.settings.vaultPin) {\n         setVaultUnlocked(true);\n         setActiveInput(null);\n         setInputValue('');\n       } else {\n         alert('رمز PIN غير صحيح');\n         setInputValue('');\n       }\n       return;\n    }\n\n    if (activeInput.type === 'goal') {\n      newData.settings.dailyGoal = numValue;\n      newData.currentDay.goal = numValue;\n    } else if (activeInput.type === 'tempEarnings') {\n      setTempEarningsValue(numValue);\n      setInputValue('');\n      setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك من هذا الكسب' });\n      return;\n    } else if (activeInput.type === 'ownerShare' && tempEarningsValue !== null) {\n      newData.currentDay.earnings += tempEarningsValue;\n      newData.currentDay.ownerShare += numValue;\n      \n      const newOpE: Operation = {\n        id: Math.random().toString(36).substr(2, 9),\n        type: 'earnings', amount: tempEarningsValue, label: 'كسب جديد', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n      };\n      const newOpS: Operation = {\n        id: Math.random().toString(36).substr(2, 9),\n        type: 'ownerShare', amount: numValue, label: 'نسبة المالك', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n      };\n      newData.currentDay.operations.push(newOpE, newOpS);\n      setTempEarningsValue(null);\n    } else if (activeInput.type === 'editOperation' && activeInput.operationId) {\n      const opIndex = newData.currentDay.operations.findIndex(o => o.id === activeInput.operationId);\n      if (opIndex > -1) {\n        const op = newData.currentDay.operations[opIndex];\n        const diff = numValue - op.amount;\n        \n        // Update the global total for that type\n        if (op.type === 'earnings') newData.currentDay.earnings += diff;\n        if (op.type === 'ownerShare') newData.currentDay.ownerShare += diff;\n        if (op.type === 'fuel') newData.currentDay.fuel += diff;\n        if (op.type === 'purchases') newData.currentDay.purchases += diff;\n        if (op.type === 'objectivePayment') newData.currentDay.objectivePayments += diff;\n        \n        op.amount = numValue;\n      }\n    } else if (activeInput.type === 'newObjectiveAmount') {\n      const newObj: Objective = {\n        id: Math.random().toString(36).substr(2, 9),\n        title: objectiveTitle || 'هدف جديد',\n        targetAmount: numValue,\n        paidAmount: 0,\n        isCompleted: false\n      };\n      newData.objectives.push(newObj);\n      setObjectiveTitle('');\n    } else if (activeInput.type === 'payObjective' && activeInput.objectiveId) {\n      const objIndex = newData.objectives.findIndex(o => o.id === activeInput.objectiveId);\n      if (objIndex > -1) {\n        const obj = newData.objectives[objIndex];\n        obj.paidAmount += numValue;\n        if (obj.paidAmount >= obj.targetAmount) obj.isCompleted = true;\n        \n        newData.currentDay.objectivePayments += numValue;\n        const newOp: Operation = {\n          id: Math.random().toString(36).substr(2, 9),\n          type: 'objectivePayment', amount: numValue, label: `دفع لـ: ${obj.title}`, timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n        };\n        newData.currentDay.operations.push(newOp);\n      }\n    } else {\n      const field = activeInput.type as keyof DailyStats;\n      (newData.currentDay[field] as number) += numValue;\n      \n      const labels: Record<string, string> = { earnings: 'كسب', ownerShare: 'نسبة مالك', fuel: 'وقود', purchases: 'مشتريات' };\n      const newOp: Operation = {\n        id: Math.random().toString(36).substr(2, 9),\n        type: activeInput.type as OperationType, amount: numValue, label: labels[activeInput.type] || 'عملية', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n      };\n      newData.currentDay.operations.push(newOp);\n    }\n\n    setData(newData);\n    saveData(newData);\n    setActiveInput(null);\n    setInputValue('');\n  }, [data, activeInput, inputValue, tempEarningsValue, objectiveTitle]);\n\n  const deleteOperation = (id: string) => {\n    if (!data) return;\n    const newData = { ...data };\n    const opIndex = newData.currentDay.operations.findIndex(o => o.id === id);\n    if (opIndex > -1) {\n      const op = newData.currentDay.operations[opIndex];\n      if (op.type === 'earnings') newData.currentDay.earnings -= op.amount;\n      if (op.type === 'ownerShare') newData.currentDay.ownerShare -= op.amount;\n      if (op.type === 'fuel') newData.currentDay.fuel -= op.amount;\n      if (op.type === 'purchases') newData.currentDay.purchases -= op.amount;\n      if (op.type === 'objectivePayment') newData.currentDay.objectivePayments -= op.amount;\n      \n      newData.currentDay.operations.splice(opIndex, 1);\n      setData(newData);\n      saveData(newData);\n    }\n  };\n\n  const handleCancel = useCallback(() => {\n    setActiveInput(null);\n    setInputValue('');\n    setTempEarningsValue(null);\n    if (showVault && !vaultUnlocked) setShowVault(false);\n  }, [showVault, vaultUnlocked]);\n\n  if (!data) return <div className=\"p-10 text-center font-bold\">جاري التحميل...</div>;\n\n  const totalDeductions = data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0);\n  const netBalance = data.currentDay.earnings - totalDeductions;\n  const progress = Math.min((netBalance / data.currentDay.goal) * 100, 100);\n\n  return (\n    <div className=\"min-h-screen max-w-md mx-auto bg-[#F9FAFB] flex flex-col p-4 pb-24 select-none\">\n      {/* Header */}\n      <div className=\"flex justify-between items-center mb-6\">\n        <button onClick={() => setShowSettings(true)} className=\"p-3 bg-white rounded-2xl text-gray-800 border-2 border-gray-200 shadow-sm active:bg-gray-100\"><Icons.Settings /></button>\n        <div className=\"text-center\">\n          <h1 className=\"text-2xl font-black text-gray-900 leading-none\">محفظة السائق</h1>\n          <p className=\"text-gray-500 font-bold text-sm mt-1\">{data.currentDay.date}</p>\n        </div>\n        <button onClick={() => { setShowVault(true); setVaultUnlocked(false); setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' }); }} className=\"p-3 bg-yellow-400 rounded-2xl text-yellow-950 border-2 border-yellow-500 shadow-sm active:bg-yellow-500\"><Icons.Vault /></button>\n      </div>\n\n      {/* Goal Progress */}\n      <div onClick={() => setActiveInput({ type: 'goal', title: 'تعديل الهدف اليومي' })} className=\"bg-white border-4 rounded-[2.5rem] p-6 mb-6 shadow-md cursor-pointer border-blue-100\">\n        <div className=\"flex justify-between items-end mb-3\">\n          <div>\n            <span className=\"text-[0.65rem] font-black uppercase tracking-wider text-gray-400 block mb-0.5\">الهدف اليومي</span>\n            <span className=\"text-2xl font-black text-gray-900\">{data.currentDay.goal.toLocaleString()} <span className=\"text-xs font-bold opacity-60\">أوقية</span></span>\n          </div>\n          <div className=\"text-right\"><span className=\"text-4xl font-black text-gray-900 leading-none\">{Math.round(progress)}%</span></div>\n        </div>\n        <div className=\"w-full bg-gray-100 rounded-full h-10 overflow-hidden border-2 border-gray-50 p-1.5 shadow-inner\">\n          <div className=\"bg-blue-600 h-full rounded-full transition-all duration-700 ease-out\" style={{ width: `${progress}%` }} />\n        </div>\n        <p className=\"text-center text-[0.65rem] font-black text-gray-400 mt-3 uppercase tracking-widest\">اضغط لتعديل الهدف</p>\n      </div>\n\n      {/* Net Balance */}\n      <div className=\"bg-[#1e293b] rounded-[3rem] p-8 text-white mb-8 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden\">\n        <p className=\"text-blue-300 font-black mb-1 text-lg uppercase tracking-tight opacity-80\">الصافي المتبقي لك</p>\n        <h2 className=\"text-6xl font-black tracking-tighter flex items-baseline gap-2\">\n          {netBalance.toLocaleString()} <span className=\"text-xl font-bold opacity-40\">أوقية</span>\n        </h2>\n      </div>\n\n      {/* Action Grid (6 Buttons) */}\n      <div className=\"grid grid-cols-2 gap-4 flex-grow mb-4\">\n        <ActionButton label=\"الكسب\" emoji=\"💰\" color=\"bg-green-50\" textColor=\"text-green-900\" borderColor=\"border-green-400\" value={data.currentDay.earnings} onClick={() => setActiveInput({ type: 'tempEarnings', title: 'إضافة مبلغ الكسب' })} />\n        <ActionButton label=\"نسبة المالك\" emoji=\"🔑\" color=\"bg-red-50\" textColor=\"text-red-900\" borderColor=\"border-red-400\" value={data.currentDay.ownerShare} onClick={() => setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك' })} />\n        <ActionButton label=\"الوقود\" emoji=\"⛽\" color=\"bg-orange-50\" textColor=\"text-orange-900\" borderColor=\"border-orange-400\" value={data.currentDay.fuel} onClick={() => setActiveInput({ type: 'fuel', title: 'خصم مصاريف الوقود' })} />\n        <ActionButton label=\"المشتريات\" emoji=\"🛒\" color=\"bg-indigo-50\" textColor=\"text-indigo-900\" borderColor=\"border-indigo-400\" value={data.currentDay.purchases} onClick={() => setActiveInput({ type: 'purchases', title: 'خصم المشتريات اليومية' })} />\n        <ActionButton label=\"العمليات\" emoji=\"📋\" color=\"bg-gray-50\" textColor=\"text-gray-900\" borderColor=\"border-gray-400\" value={data.currentDay.operations.length} onClick={() => setShowOpsList(true)} labelSuffix=\"عملية\" />\n        <ActionButton label=\"الأهداف\" emoji=\"🎯\" color=\"bg-blue-50\" textColor=\"text-blue-900\" borderColor=\"border-blue-400\" value={data.objectives.length} onClick={() => setShowObjectives(true)} labelSuffix=\"هدف\" />\n      </div>\n\n      {/* Overlays (Modals) */}\n      {activeInput && (\n        <div className=\"fixed inset-0 bg-black/70 z-[100] backdrop-blur-md flex items-end\" onClick={handleCancel}>\n          <div className=\"w-full\" onClick={e => e.stopPropagation()}>\n            <Keypad title={activeInput.title} value={inputValue} onInput={(v) => setInputValue(prev => prev + v)} onClear={() => setInputValue('')} onConfirm={handleUpdateValue} onCancel={handleCancel} />\n          </div>\n        </div>\n      )}\n\n      {/* Operations List Modal */}\n      {showOpsList && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-6\">\n          <div className=\"flex justify-between items-center mb-8\">\n            <h2 className=\"text-3xl font-black text-gray-900\">العمليات اليومية 📋</h2>\n            <button onClick={() => setShowOpsList(false)} className=\"p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6\">إغلاق ✕</button>\n          </div>\n          <div className=\"space-y-4\">\n            {data.currentDay.operations.length === 0 && <div className=\"text-center text-gray-400 py-20 font-bold\">لم تقم بأي عمليات اليوم</div>}\n            {[...data.currentDay.operations].reverse().map(op => (\n              <div key={op.id} className=\"bg-white p-5 rounded-3xl border-2 border-gray-100 flex justify-between items-center shadow-sm\">\n                <div>\n                  <p className=\"font-black text-gray-800\">{op.label}</p>\n                  <p className=\"text-xs font-bold text-gray-400\">{op.timestamp}</p>\n                </div>\n                <div className=\"flex items-center gap-4\">\n                  <span className={`font-black text-xl ${op.type === 'earnings' ? 'text-green-600' : 'text-red-500'}`}>\n                    {op.type === 'earnings' ? '+' : '-'}{op.amount.toLocaleString()}\n                  </span>\n                  <div className=\"flex gap-2\">\n                    <button onClick={() => setActiveInput({ type: 'editOperation', title: 'تعديل المبلغ', operationId: op.id })} className=\"p-2 bg-blue-50 text-blue-600 rounded-xl\">✎</button>\n                    <button onClick={() => deleteOperation(op.id)} className=\"p-2 bg-red-50 text-red-600 rounded-xl\">🗑</button>\n                  </div>\n                </div>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {/* Objectives Modal */}\n      {showObjectives && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-6\">\n          <div className=\"flex justify-between items-center mb-8\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الأهداف والديون 🎯</h2>\n            <button onClick={() => setShowObjectives(false)} className=\"p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6\">إغلاق ✕</button>\n          </div>\n          \n          <div className=\"bg-white p-6 rounded-[2rem] border-2 border-dashed border-blue-200 mb-8\">\n            <h3 className=\"font-black mb-4 text-blue-800\">إضافة هدف جديد</h3>\n            <input \n              type=\"text\" placeholder=\"اسم الهدف (مثلاً: شراء خوذة)\" value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)}\n              className=\"w-full p-4 bg-gray-50 rounded-2xl border-2 border-gray-100 mb-3 text-right font-bold focus:border-blue-500 outline-none\"\n            />\n            <button onClick={() => setActiveInput({ type: 'newObjectiveAmount', title: 'المبلغ المطلوب للهدف' })} className=\"w-full bg-blue-600 text-white p-4 rounded-2xl font-black shadow-lg\">تحديد المبلغ وإضافة</button>\n          </div>\n\n          <div className=\"space-y-6\">\n            {data.objectives.map(obj => (\n              <div key={obj.id} className={`bg-white p-6 rounded-[2rem] border-2 shadow-sm ${obj.isCompleted ? 'border-green-200' : 'border-gray-100'}`}>\n                <div className=\"flex justify-between items-start mb-4\">\n                  <div>\n                    <h4 className=\"font-black text-xl text-gray-800\">{obj.title} {obj.isCompleted && '✅'}</h4>\n                    <p className=\"text-sm font-bold text-gray-400\">المطلوب: {obj.targetAmount.toLocaleString()} أوقية</p>\n                  </div>\n                  {!obj.isCompleted && (\n                    <button onClick={() => setActiveInput({ type: 'payObjective', title: `دفع لـ ${obj.title}`, objectiveId: obj.id })} className=\"bg-green-600 text-white px-6 py-3 rounded-2xl font-black shadow-md\">دفع الآن</button>\n                  )}\n                </div>\n                <div className=\"w-full bg-gray-100 h-4 rounded-full overflow-hidden mb-2\">\n                  <div className=\"bg-green-500 h-full transition-all duration-500\" style={{ width: `${Math.min((obj.paidAmount / obj.targetAmount) * 100, 100)}%` }}></div>\n                </div>\n                <p className=\"text-left text-xs font-black text-gray-500\">تم دفع: {obj.paidAmount.toLocaleString()} ({Math.round((obj.paidAmount / obj.targetAmount) * 100)}%)</p>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {/* Existing Vault and Settings Modals... */}\n      {showVault && vaultUnlocked && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[90] overflow-y-auto p-6\">\n          <div className=\"flex justify-between items-center mb-8\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الخزنة 🏦</h2>\n            <button onClick={() => setShowVault(false)} className=\"p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6\">رجوع ✕</button>\n          </div>\n          <div className=\"bg-yellow-400 border-4 border-yellow-500 rounded-[3rem] p-10 mb-8 shadow-xl text-yellow-950\">\n            <p className=\"font-black mb-1 text-xl opacity-80\">إجمالي المدخرات</p>\n            <h3 className=\"text-6xl font-black tracking-tighter\">\n              {data.vault.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} <span className=\"text-xl\">أوقية</span>\n            </h3>\n          </div>\n          <div className=\"space-y-4\">\n            {data.vault.map((entry, idx) => (\n              <div key={idx} className=\"flex justify-between items-center p-6 bg-white rounded-3xl border-2 border-gray-100 shadow-sm font-black\">\n                <span className=\"text-gray-400\">{entry.date}</span>\n                <span className=\"text-green-700 text-2xl\">+{entry.amount.toLocaleString()}</span>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {showSettings && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[90] p-6\">\n           <div className=\"flex justify-between items-center mb-10\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الإعدادات ⚙️</h2>\n            <button onClick={() => setShowSettings(false)} className=\"p-3 bg-gray-200 rounded-2xl font-black text-gray-700 px-6\">رجوع ✕</button>\n          </div>\n          <button onClick={() => exportData(data)} className=\"w-full text-right p-6 bg-blue-600 text-white rounded-[1.5rem] font-black text-xl shadow-lg border-b-8 border-blue-800 active:translate-y-1 active:border-b-4 transition-all\">تصدير نسخة احتياطية (Backup)</button>\n        </div>\n      )}\n    </div>\n  );\n};\n\nconst ActionButton: React.FC<{ label: string, emoji: string, color: string, textColor: string, borderColor: string, value: number, onClick: () => void, labelSuffix?: string }> = ({ label, emoji, color, textColor, borderColor, value, onClick, labelSuffix = \"أوقية\" }) => {\n  return (\n    <button onClick={onClick} className={`${color} ${borderColor} border-4 rounded-[2.5rem] p-5 flex flex-col justify-between items-start h-44 active:scale-95 transition-all shadow-sm border-b-8`}>\n      <div className=\"text-5xl\">{emoji}</div>\n      <div className=\"text-right w-full\">\n        <p className={`${textColor} font-black text-lg mb-1`}>{label}</p>\n        <p className={`${textColor} font-black bg-white/70 inline-block px-3 py-1 rounded-xl text-xs border border-black/5`}>\n          {value.toLocaleString()} <span className=\"text-[10px]\">{labelSuffix}</span>\n        </p>\n      </div>\n    </button>\n  );\n};\n\nexport default App;\n"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1770659172,
+      "nanos": 926000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770659174,
+      "nanos": 584000000
+    }
+  },
+  {
+    "id": 21,
+    "author": "user",
+    "payload": {
+      "type": "text",
+      "text": "- Add a button within the savings page that allows users to withdraw funds from their savings.\n- When the button is clicked, a specific amount will be deducted from the total savings.\n- Users should be able to delete or edit goals.\n- The goal's deletion or editing functionality should be accessible next to the goal itself.\n- I also want the daily goals to have their visual representation renewed, for example, their color changes based on progress. The closer the progress, the darker the color will become, until it turns fully dark green when 100% complete.\n- I also want neon lights behind all the icons. The lights should be animated and dynamic.",
+      "files": [],
+      "fileUploads": [],
+      "cssBlocks": [],
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770771480,
+      "nanos": 9000000
+    }
+  },
+  {
+    "id": 22,
+    "author": "model",
+    "payload": {
+      "type": "thinking",
+      "text": "**Refining UI Enhancements**\n\nI'm currently focused on the vault/savings page. The withdrawal button addition is taking shape, and I'm exploring seamless integration. I've also progressed the deletion/editing features for the long-term objectives. Furthermore, I am in the midst of implementing a dynamic color change for the daily goal progress bar: I'm planning it to darken from green as the goal approaches ten.\n\n\n**Implementing Visual Refinements**\n\nI've just added neon glowing lights behind the main action icons for a visually appealing update. The vault withdrawal function now has a keypad input, and I've ensured negative amounts and explicit withdrawals are handled in the history. Also, I implemented the dark green progress bar for the daily goals. The next task includes working on the edit and delete options for each objective.\n\n\n**Analyzing Data Structures**\n\nI'm thinking more about data structures now, and I'm updating `types.ts` to accommodate a `VaultEntry` for withdrawals, recorded as negative values. I've also finalized the progress bar coloring; I'll use a lime-to-forest green HSL transition. I've started on animated radial gradients or shadows for the neon lights, and want them to dynamically match the button's theme. Finally, I'm making the withdraw button prominent.\n\n\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770771480,
+      "nanos": 9000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770771487,
+      "nanos": 238000000
+    }
+  },
+  {
+    "id": 23,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "index.html",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Add custom neon pulse animation styles.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\n<!DOCTYPE html>\n<html lang=\"ar\" dir=\"rtl\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>MR Rider Wallet</title>\n    <script src=\"https://cdn.tailwindcss.com\"></script>\n    <link href=\"https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap\" rel=\"stylesheet\">\n    <style>\n        body {\n            font-family: 'Cairo', sans-serif;\n            -webkit-tap-highlight-color: transparent;\n        }\n        @keyframes neon-pulse {\n            0%, 100% { transform: scale(1); opacity: 0.4; filter: blur(20px); }\n            50% { transform: scale(1.15); opacity: 0.7; filter: blur(25px); }\n        }\n        .neon-glow {\n            animation: neon-pulse 3s infinite ease-in-out;\n        }\n    </style>\n<script type=\"importmap\">\n{\n  \"imports\": {\n    \"react\": \"https://esm.sh/react@^19.2.3\",\n    \"react-dom/\": \"https://esm.sh/react-dom@^19.2.3/\",\n    \"react/\": \"https://esm.sh/react@^19.2.3/\"\n  }\n}\n</script>\n</head>\n<body class=\"bg-[#F3F4F6] text-[#111827]\">\n    <div id=\"root\"></div>\n</body>\n</html>"
+            }
+          ]
+        },
+        {
+          "path": "App.tsx",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Add Vault withdrawal, Objective editing/deletion, dynamic goal color progress, and animated neon effects.",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\nimport React, { useState, useEffect, useCallback } from 'react';\nimport { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry } from './types';\nimport { getInitialData, saveData, exportData } from './services/storage';\nimport { Icons, CURRENCY } from './constants';\nimport Keypad from './components/Keypad';\n\nconst App: React.FC = () => {\n  const [data, setData] = useState<AppData | null>(null);\n  const [activeInput, setActiveInput] = useState<{ \n    type: keyof DailyStats | 'pin' | 'goal' | 'tempEarnings' | 'editOperation' | 'newObjectiveAmount' | 'payObjective' | 'withdrawVault' | 'editObjectiveAmount', \n    title: string,\n    operationId?: string,\n    objectiveId?: string\n  } | null>(null);\n  \n  const [inputValue, setInputValue] = useState('');\n  const [objectiveTitle, setObjectiveTitle] = useState('');\n  \n  const [showVault, setShowVault] = useState(false);\n  const [vaultUnlocked, setVaultUnlocked] = useState(false);\n  const [showSettings, setShowSettings] = useState(false);\n  const [showOpsList, setShowOpsList] = useState(false);\n  const [showObjectives, setShowObjectives] = useState(false);\n  \n  const [tempEarningsValue, setTempEarningsValue] = useState<number | null>(null);\n\n  useEffect(() => {\n    setData(getInitialData());\n  }, []);\n\n  const handleUpdateValue = useCallback(() => {\n    if (!data || !activeInput) return;\n    \n    const numValue = parseInt(inputValue) || 0;\n    const newData = { ...data };\n\n    if (activeInput.type === 'pin') {\n       if (inputValue === data.settings.vaultPin) {\n         setVaultUnlocked(true);\n         setActiveInput(null);\n         setInputValue('');\n       } else {\n         alert('رمز PIN غير صحيح');\n         setInputValue('');\n       }\n       return;\n    }\n\n    if (activeInput.type === 'goal') {\n      newData.settings.dailyGoal = numValue;\n      newData.currentDay.goal = numValue;\n    } else if (activeInput.type === 'withdrawVault') {\n      const entry: VaultEntry = {\n        date: new Date().toISOString().split('T')[0],\n        amount: -numValue\n      };\n      newData.vault.push(entry);\n    } else if (activeInput.type === 'tempEarnings') {\n      setTempEarningsValue(numValue);\n      setInputValue('');\n      setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك من هذا الكسب' });\n      return;\n    } else if (activeInput.type === 'ownerShare' && tempEarningsValue !== null) {\n      newData.currentDay.earnings += tempEarningsValue;\n      newData.currentDay.ownerShare += numValue;\n      \n      const newOpE: Operation = {\n        id: Math.random().toString(36).substr(2, 9),\n        type: 'earnings', amount: tempEarningsValue, label: 'كسب جديد', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n      };\n      const newOpS: Operation = {\n        id: Math.random().toString(36).substr(2, 9),\n        type: 'ownerShare', amount: numValue, label: 'نسبة المالك', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n      };\n      newData.currentDay.operations.push(newOpE, newOpS);\n      setTempEarningsValue(null);\n    } else if (activeInput.type === 'editOperation' && activeInput.operationId) {\n      const opIndex = newData.currentDay.operations.findIndex(o => o.id === activeInput.operationId);\n      if (opIndex > -1) {\n        const op = newData.currentDay.operations[opIndex];\n        const diff = numValue - op.amount;\n        if (op.type === 'earnings') newData.currentDay.earnings += diff;\n        if (op.type === 'ownerShare') newData.currentDay.ownerShare += diff;\n        if (op.type === 'fuel') newData.currentDay.fuel += diff;\n        if (op.type === 'purchases') newData.currentDay.purchases += diff;\n        if (op.type === 'objectivePayment') newData.currentDay.objectivePayments += diff;\n        op.amount = numValue;\n      }\n    } else if (activeInput.type === 'newObjectiveAmount') {\n      const newObj: Objective = {\n        id: Math.random().toString(36).substr(2, 9),\n        title: objectiveTitle || 'هدف جديد',\n        targetAmount: numValue,\n        paidAmount: 0,\n        isCompleted: false\n      };\n      newData.objectives.push(newObj);\n      setObjectiveTitle('');\n    } else if (activeInput.type === 'editObjectiveAmount' && activeInput.objectiveId) {\n      const obj = newData.objectives.find(o => o.id === activeInput.objectiveId);\n      if (obj) {\n        obj.targetAmount = numValue;\n        obj.isCompleted = obj.paidAmount >= obj.targetAmount;\n      }\n    } else if (activeInput.type === 'payObjective' && activeInput.objectiveId) {\n      const obj = newData.objectives.find(o => o.id === activeInput.objectiveId);\n      if (obj) {\n        obj.paidAmount += numValue;\n        obj.isCompleted = obj.paidAmount >= obj.targetAmount;\n        newData.currentDay.objectivePayments += numValue;\n        const newOp: Operation = {\n          id: Math.random().toString(36).substr(2, 9),\n          type: 'objectivePayment', amount: numValue, label: `دفع لـ: ${obj.title}`, timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n        };\n        newData.currentDay.operations.push(newOp);\n      }\n    } else {\n      const field = activeInput.type as keyof DailyStats;\n      (newData.currentDay[field] as number) += numValue;\n      const labels: Record<string, string> = { earnings: 'كسب', ownerShare: 'نسبة مالك', fuel: 'وقود', purchases: 'مشتريات' };\n      const newOp: Operation = {\n        id: Math.random().toString(36).substr(2, 9),\n        type: activeInput.type as OperationType, amount: numValue, label: labels[activeInput.type] || 'عملية', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })\n      };\n      newData.currentDay.operations.push(newOp);\n    }\n\n    setData(newData);\n    saveData(newData);\n    setActiveInput(null);\n    setInputValue('');\n  }, [data, activeInput, inputValue, tempEarningsValue, objectiveTitle]);\n\n  const deleteObjective = (id: string) => {\n    if (!data) return;\n    const newData = { ...data };\n    newData.objectives = newData.objectives.filter(o => o.id !== id);\n    setData(newData);\n    saveData(newData);\n  };\n\n  const deleteOperation = (id: string) => {\n    if (!data) return;\n    const newData = { ...data };\n    const opIndex = newData.currentDay.operations.findIndex(o => o.id === id);\n    if (opIndex > -1) {\n      const op = newData.currentDay.operations[opIndex];\n      if (op.type === 'earnings') newData.currentDay.earnings -= op.amount;\n      if (op.type === 'ownerShare') newData.currentDay.ownerShare -= op.amount;\n      if (op.type === 'fuel') newData.currentDay.fuel -= op.amount;\n      if (op.type === 'purchases') newData.currentDay.purchases -= op.amount;\n      if (op.type === 'objectivePayment') newData.currentDay.objectivePayments -= op.amount;\n      newData.currentDay.operations.splice(opIndex, 1);\n      setData(newData);\n      saveData(newData);\n    }\n  };\n\n  const handleCancel = useCallback(() => {\n    setActiveInput(null);\n    setInputValue('');\n    setTempEarningsValue(null);\n    if (showVault && !vaultUnlocked) setShowVault(false);\n  }, [showVault, vaultUnlocked]);\n\n  if (!data) return <div className=\"p-10 text-center font-bold\">جاري التحميل...</div>;\n\n  const totalDeductions = data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0);\n  const netBalance = data.currentDay.earnings - totalDeductions;\n  const progress = Math.min((netBalance / data.currentDay.goal) * 100, 100);\n\n  // Dynamic progress color generator\n  const getProgressColor = (pct: number) => {\n    if (pct < 10) return 'bg-green-50';\n    if (pct < 30) return 'bg-green-200';\n    if (pct < 50) return 'bg-green-400';\n    if (pct < 70) return 'bg-green-600';\n    if (pct < 90) return 'bg-green-800';\n    return 'bg-green-950';\n  };\n\n  return (\n    <div className=\"min-h-screen max-w-md mx-auto bg-[#F9FAFB] flex flex-col p-4 pb-24 select-none relative overflow-x-hidden\">\n      {/* Header */}\n      <div className=\"flex justify-between items-center mb-6 z-10\">\n        <button onClick={() => setShowSettings(true)} className=\"p-3 bg-white rounded-2xl text-gray-800 border-2 border-gray-200 shadow-sm active:bg-gray-100\"><Icons.Settings /></button>\n        <div className=\"text-center\">\n          <h1 className=\"text-2xl font-black text-gray-900 leading-none\">محفظة السائق</h1>\n          <p className=\"text-gray-500 font-bold text-sm mt-1\">{data.currentDay.date}</p>\n        </div>\n        <button onClick={() => { setShowVault(true); setVaultUnlocked(false); setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' }); }} className=\"p-3 bg-yellow-400 rounded-2xl text-yellow-950 border-2 border-yellow-500 shadow-sm active:bg-yellow-500\"><Icons.Vault /></button>\n      </div>\n\n      {/* Goal Progress */}\n      <div onClick={() => setActiveInput({ type: 'goal', title: 'تعديل الهدف اليومي' })} className=\"bg-white border-4 rounded-[2.5rem] p-6 mb-6 shadow-md cursor-pointer border-gray-100 z-10\">\n        <div className=\"flex justify-between items-end mb-3\">\n          <div>\n            <span className=\"text-[0.65rem] font-black uppercase tracking-wider text-gray-400 block mb-0.5\">الهدف اليومي</span>\n            <span className=\"text-2xl font-black text-gray-900\">{data.currentDay.goal.toLocaleString()} <span className=\"text-xs font-bold opacity-60\">أوقية</span></span>\n          </div>\n          <div className=\"text-right\"><span className=\"text-4xl font-black text-gray-900 leading-none\">{Math.round(progress)}%</span></div>\n        </div>\n        <div className=\"w-full bg-gray-100 rounded-full h-10 overflow-hidden border-2 border-gray-50 p-1.5 shadow-inner\">\n          <div className={`${getProgressColor(progress)} h-full rounded-full transition-all duration-700 ease-out`} style={{ width: `${progress}%` }} />\n        </div>\n        <p className=\"text-center text-[0.65rem] font-black text-gray-400 mt-3 uppercase tracking-widest\">اضغط لتعديل الهدف</p>\n      </div>\n\n      {/* Net Balance */}\n      <div className=\"bg-[#1e293b] rounded-[3rem] p-8 text-white mb-8 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10\">\n        <p className=\"text-blue-300 font-black mb-1 text-lg uppercase tracking-tight opacity-80\">الصافي المتبقي لك</p>\n        <h2 className=\"text-6xl font-black tracking-tighter flex items-baseline gap-2\">\n          {netBalance.toLocaleString()} <span className=\"text-xl font-bold opacity-40\">أوقية</span>\n        </h2>\n      </div>\n\n      {/* Action Grid (6 Buttons) with Neon Glows */}\n      <div className=\"grid grid-cols-2 gap-x-4 gap-y-6 flex-grow mb-4 relative\">\n        <ActionButton label=\"الكسب\" emoji=\"💰\" color=\"bg-green-50\" textColor=\"text-green-900\" borderColor=\"border-green-400\" glowColor=\"rgba(34, 197, 94, 0.4)\" value={data.currentDay.earnings} onClick={() => setActiveInput({ type: 'tempEarnings', title: 'إضافة مبلغ الكسب' })} />\n        <ActionButton label=\"نسبة المالك\" emoji=\"🔑\" color=\"bg-red-50\" textColor=\"text-red-900\" borderColor=\"border-red-400\" glowColor=\"rgba(239, 68, 68, 0.4)\" value={data.currentDay.ownerShare} onClick={() => setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك' })} />\n        <ActionButton label=\"الوقود\" emoji=\"⛽\" color=\"bg-orange-50\" textColor=\"text-orange-900\" borderColor=\"border-orange-400\" glowColor=\"rgba(249, 115, 22, 0.4)\" value={data.currentDay.fuel} onClick={() => setActiveInput({ type: 'fuel', title: 'خصم مصاريف الوقود' })} />\n        <ActionButton label=\"المشتريات\" emoji=\"🛒\" color=\"bg-indigo-50\" textColor=\"text-indigo-900\" borderColor=\"border-indigo-400\" glowColor=\"rgba(99, 102, 241, 0.4)\" value={data.currentDay.purchases} onClick={() => setActiveInput({ type: 'purchases', title: 'خصم المشتريات اليومية' })} />\n        <ActionButton label=\"العمليات\" emoji=\"📋\" color=\"bg-gray-50\" textColor=\"text-gray-900\" borderColor=\"border-gray-400\" glowColor=\"rgba(107, 114, 128, 0.4)\" value={data.currentDay.operations.length} onClick={() => setShowOpsList(true)} labelSuffix=\"عملية\" />\n        <ActionButton label=\"الأهداف\" emoji=\"🎯\" color=\"bg-blue-50\" textColor=\"text-blue-900\" borderColor=\"border-blue-400\" glowColor=\"rgba(59, 130, 246, 0.4)\" value={data.objectives.length} onClick={() => setShowObjectives(true)} labelSuffix=\"هدف\" />\n      </div>\n\n      {/* Overlays */}\n      {activeInput && (\n        <div className=\"fixed inset-0 bg-black/70 z-[100] backdrop-blur-md flex items-end\" onClick={handleCancel}>\n          <div className=\"w-full\" onClick={e => e.stopPropagation()}>\n            <Keypad title={activeInput.title} value={inputValue} onInput={(v) => setInputValue(prev => prev + v)} onClear={() => setInputValue('')} onConfirm={handleUpdateValue} onCancel={handleCancel} />\n          </div>\n        </div>\n      )}\n\n      {/* Operations List */}\n      {showOpsList && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-6\">\n          <div className=\"flex justify-between items-center mb-8\">\n            <h2 className=\"text-3xl font-black text-gray-900\">العمليات اليومية 📋</h2>\n            <button onClick={() => setShowOpsList(false)} className=\"p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6\">إغلاق ✕</button>\n          </div>\n          <div className=\"space-y-4\">\n            {data.currentDay.operations.length === 0 && <div className=\"text-center text-gray-400 py-20 font-bold\">لم تقم بأي عمليات اليوم</div>}\n            {[...data.currentDay.operations].reverse().map(op => (\n              <div key={op.id} className=\"bg-white p-5 rounded-3xl border-2 border-gray-100 flex justify-between items-center shadow-sm\">\n                <div>\n                  <p className=\"font-black text-gray-800\">{op.label}</p>\n                  <p className=\"text-xs font-bold text-gray-400\">{op.timestamp}</p>\n                </div>\n                <div className=\"flex items-center gap-4\">\n                  <span className={`font-black text-xl ${op.type === 'earnings' ? 'text-green-600' : 'text-red-500'}`}>\n                    {op.type === 'earnings' ? '+' : '-'}{op.amount.toLocaleString()}\n                  </span>\n                  <div className=\"flex gap-2\">\n                    <button onClick={() => setActiveInput({ type: 'editOperation', title: 'تعديل المبلغ', operationId: op.id })} className=\"p-2 bg-blue-50 text-blue-600 rounded-xl\">✎</button>\n                    <button onClick={() => deleteOperation(op.id)} className=\"p-2 bg-red-50 text-red-600 rounded-xl\">🗑</button>\n                  </div>\n                </div>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {/* Objectives Modal */}\n      {showObjectives && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-6\">\n          <div className=\"flex justify-between items-center mb-8\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الأهداف والديون 🎯</h2>\n            <button onClick={() => setShowObjectives(false)} className=\"p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6\">إغلاق ✕</button>\n          </div>\n          \n          <div className=\"bg-white p-6 rounded-[2rem] border-2 border-dashed border-blue-200 mb-8\">\n            <h3 className=\"font-black mb-4 text-blue-800\">إضافة هدف جديد</h3>\n            <input \n              type=\"text\" placeholder=\"اسم الهدف (مثلاً: شراء خوذة)\" value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)}\n              className=\"w-full p-4 bg-gray-50 rounded-2xl border-2 border-gray-100 mb-3 text-right font-bold focus:border-blue-500 outline-none\"\n            />\n            <button onClick={() => setActiveInput({ type: 'newObjectiveAmount', title: 'المبلغ المطلوب للهدف' })} className=\"w-full bg-blue-600 text-white p-4 rounded-2xl font-black shadow-lg\">تحديد المبلغ وإضافة</button>\n          </div>\n\n          <div className=\"space-y-6 pb-10\">\n            {data.objectives.map(obj => (\n              <div key={obj.id} className={`bg-white p-6 rounded-[2rem] border-2 shadow-sm ${obj.isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}>\n                <div className=\"flex justify-between items-start mb-4\">\n                  <div className=\"flex-1\">\n                    <h4 className=\"font-black text-xl text-gray-800\">{obj.title} {obj.isCompleted && '✅'}</h4>\n                    <p className=\"text-sm font-bold text-gray-400\">المطلوب: {obj.targetAmount.toLocaleString()} أوقية</p>\n                  </div>\n                  <div className=\"flex gap-2\">\n                    {!obj.isCompleted && (\n                      <button onClick={() => setActiveInput({ type: 'payObjective', title: `دفع لـ ${obj.title}`, objectiveId: obj.id })} className=\"bg-green-600 text-white px-5 py-3 rounded-2xl font-black shadow-md text-sm\">دفع</button>\n                    )}\n                    <button onClick={() => setActiveInput({ type: 'editObjectiveAmount', title: `تعديل مبلغ ${obj.title}`, objectiveId: obj.id })} className=\"p-3 bg-blue-50 text-blue-600 rounded-2xl\">✎</button>\n                    <button onClick={() => deleteObjective(obj.id)} className=\"p-3 bg-red-50 text-red-600 rounded-2xl\">🗑</button>\n                  </div>\n                </div>\n                <div className=\"w-full bg-gray-100 h-4 rounded-full overflow-hidden mb-2\">\n                  <div className=\"bg-green-500 h-full transition-all duration-500\" style={{ width: `${Math.min((obj.paidAmount / obj.targetAmount) * 100, 100)}%` }}></div>\n                </div>\n                <p className=\"text-left text-xs font-black text-gray-500\">تم دفع: {obj.paidAmount.toLocaleString()} ({Math.round((obj.paidAmount / obj.targetAmount) * 100)}%)</p>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {/* Vault (Savings) */}\n      {showVault && vaultUnlocked && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[90] overflow-y-auto p-6\">\n          <div className=\"flex justify-between items-center mb-8\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الخزنة 🏦</h2>\n            <button onClick={() => setShowVault(false)} className=\"p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6\">رجوع ✕</button>\n          </div>\n          <div className=\"bg-yellow-400 border-4 border-yellow-500 rounded-[3rem] p-10 mb-8 shadow-xl text-yellow-950 relative overflow-hidden\">\n            <div className=\"absolute -bottom-10 -right-10 opacity-10 text-[12rem]\">🏦</div>\n            <p className=\"font-black mb-1 text-xl opacity-80 uppercase tracking-widest\">إجمالي المدخرات</p>\n            <h3 className=\"text-6xl font-black tracking-tighter mb-6\">\n              {data.vault.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()} <span className=\"text-xl font-bold\">أوقية</span>\n            </h3>\n            <button \n              onClick={() => setActiveInput({ type: 'withdrawVault', title: 'مبلغ السحب من الخزنة' })}\n              className=\"w-full bg-yellow-950 text-white p-5 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-all border-b-8 border-yellow-900\"\n            >\n              سحب مبلغ 💸\n            </button>\n          </div>\n          <div className=\"space-y-4 pb-10\">\n            <h4 className=\"font-black text-gray-400 border-b-2 border-gray-100 pb-2 mb-2\">سجل الحركات</h4>\n            {data.vault.length === 0 && <div className=\"text-center text-gray-300 py-10 font-bold\">لا توجد حركات</div>}\n            {[...data.vault].reverse().map((entry, idx) => (\n              <div key={idx} className=\"flex justify-between items-center p-6 bg-white rounded-3xl border-2 border-gray-100 shadow-sm font-black\">\n                <div className=\"flex flex-col\">\n                   <span className=\"text-gray-400 text-xs\">{entry.date}</span>\n                   <span className=\"text-gray-800\">{entry.amount < 0 ? 'عملية سحب' : 'ترحيل يومي'}</span>\n                </div>\n                <span className={`text-2xl ${entry.amount < 0 ? 'text-red-600' : 'text-green-700'}`}>\n                  {entry.amount < 0 ? '' : '+'}{entry.amount.toLocaleString()}\n                </span>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {/* Settings */}\n      {showSettings && (\n        <div className=\"fixed inset-0 bg-[#F9FAFB] z-[90] p-6\">\n           <div className=\"flex justify-between items-center mb-10\">\n            <h2 className=\"text-3xl font-black text-gray-900\">الإعدادات ⚙️</h2>\n            <button onClick={() => setShowSettings(false)} className=\"p-3 bg-gray-200 rounded-2xl font-black text-gray-700 px-6\">رجوع ✕</button>\n          </div>\n          <button onClick={() => exportData(data)} className=\"w-full text-right p-6 bg-blue-600 text-white rounded-[1.5rem] font-black text-xl shadow-lg border-b-8 border-blue-800 active:translate-y-1 active:border-b-4 transition-all mb-4\">تصدير نسخة احتياطية (Backup)</button>\n          <div className=\"bg-white p-6 rounded-3xl border-2 border-gray-100 text-gray-500 font-bold text-center\">\n            تطبيق محفظة السائق v3.0 Interactive\n          </div>\n        </div>\n      )}\n    </div>\n  );\n};\n\nconst ActionButton: React.FC<{ \n  label: string, \n  emoji: string, \n  color: string, \n  textColor: string, \n  borderColor: string, \n  glowColor: string, \n  value: number, \n  onClick: () => void, \n  labelSuffix?: string \n}> = ({ label, emoji, color, textColor, borderColor, glowColor, value, onClick, labelSuffix = \"أوقية\" }) => {\n  return (\n    <div className=\"relative group\">\n      {/* Neon Glow Layer */}\n      <div \n        className=\"absolute inset-0 rounded-[2.5rem] neon-glow -z-10 blur-xl pointer-events-none\" \n        style={{ backgroundColor: glowColor }}\n      ></div>\n      \n      <button \n        onClick={onClick} \n        className={`${color} ${borderColor} border-4 rounded-[2.5rem] p-5 flex flex-col justify-between items-start h-44 w-full active:scale-95 transition-all shadow-sm border-b-8 z-10 relative overflow-hidden`}\n      >\n        <div className=\"text-5xl group-active:scale-125 transition-transform duration-300\">{emoji}</div>\n        <div className=\"text-right w-full\">\n          <p className={`${textColor} font-black text-lg mb-1 leading-tight`}>{label}</p>\n          <p className={`${textColor} font-black bg-white/70 inline-block px-3 py-1 rounded-xl text-xs border border-black/5 shadow-inner`}>\n            {value.toLocaleString()} <span className=\"text-[10px] opacity-70\">{labelSuffix}</span>\n          </p>\n        </div>\n        {/* Subtle glass effect */}\n        <div className=\"absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 pointer-events-none\"></div>\n      </button>\n    </div>\n  );\n};\n\nexport default App;\n"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1770771487,
+      "nanos": 239000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770771490,
+      "nanos": 422000000
+    }
+  },
+  {
+    "id": 24,
+    "author": "model",
+    "payload": {
+      "type": "text",
+      "text": "xml\n",
+      "cMarkNode": {}
+    },
+    "createdTimestamp": {
+      "seconds": 1770771524,
+      "nanos": 718000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770771524,
+      "nanos": 718000000
+    }
+  },
+  {
+    "id": 25,
+    "author": "model",
+    "payload": {
+      "type": "generationTable",
+      "entries": [
+        {
+          "path": "metadata.json",
+          "generationType": 1,
+          "isDone": true,
+          "description": "Add necessary permissions if any (none needed currently but updating placeholder).",
+          "diffs": [
+            {
+              "target": "",
+              "replacement": "\n{\n  \"name\": \"MR Rider Wallet (محفظة السائق)\",\n  \"description\": \"تطبيق مالي لسائقي التوصيل في موريتانيا، مصمم للرؤية العالية مع سحب المدخرات والأهداف التفاعلية.\",\n  \"requestFramePermissions\": []\n}\n"
+            }
+          ]
+        }
+      ]
+    },
+    "createdTimestamp": {
+      "seconds": 1770771524,
+      "nanos": 718000000
+    },
+    "doneTimestamp": {
+      "seconds": 1770771526,
+      "nanos": 174000000
+    }
+  }
+]

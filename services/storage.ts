@@ -30,9 +30,10 @@ export const getInitialData = (): AppData => {
        data.lastSettlementDate = today;
        saveData(data);
     }
-    // Migration: Ensure objectives and operations exist
+    // Migration: Ensure objectives, operations and monthlyGoal exist
     if (!data.objectives) data.objectives = [];
     if (!data.currentDay.operations) data.currentDay.operations = [];
+    if (!data.settings.monthlyGoal) data.settings.monthlyGoal = 15000;
     return data;
   }
   
@@ -42,6 +43,7 @@ export const getInitialData = (): AppData => {
     objectives: [],
     settings: {
       dailyGoal: 500,
+      monthlyGoal: 15000,
       vaultPin: INITIAL_PIN
     },
     lastSettlementDate: new Date().toISOString().split('T')[0]
