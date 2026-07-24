@@ -4,6 +4,8 @@ import { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry } 
 import { getInitialData, saveData, exportData } from './services/storage';
 import { Icons, CURRENCY } from './constants';
 import Keypad from './components/Keypad';
+import TradingDashboard from './components/TradingDashboard';
+import WeeklyAnalytics from './components/WeeklyAnalytics';
 
 const App: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
@@ -22,6 +24,8 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showOpsList, setShowOpsList] = useState(false);
   const [showObjectives, setShowObjectives] = useState(false);
+  const [showTrading, setShowTrading] = useState(false);
+  const [showWeeklyAnalytics, setShowWeeklyAnalytics] = useState(false);
   
   const [tempEarningsValue, setTempEarningsValue] = useState<number | null>(null);
 
@@ -205,7 +209,23 @@ const App: React.FC = () => {
           <h1 className="text-2xl font-black text-gray-900 leading-none">محفظة السائق</h1>
           <p className="text-gray-500 font-bold text-sm mt-1">{data.currentDay.date}</p>
         </div>
-        <button onClick={() => { setShowVault(true); setVaultUnlocked(false); setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' }); }} className="p-3 bg-yellow-400 rounded-2xl text-yellow-950 border-2 border-yellow-500 shadow-sm active:bg-yellow-500"><Icons.Vault /></button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setShowWeeklyAnalytics(true)} 
+            className="p-3 bg-slate-900 rounded-2xl text-blue-400 border-2 border-slate-700 shadow-sm active:bg-slate-800 text-lg font-black flex items-center justify-center transition-transform active:scale-95"
+            title="التحليل الأسبوعي"
+          >
+            📊
+          </button>
+          <button 
+            onClick={() => setShowTrading(true)} 
+            className="p-3 bg-slate-900 rounded-2xl text-emerald-400 border-2 border-slate-700 shadow-sm active:bg-slate-800 text-lg font-black flex items-center justify-center transition-transform active:scale-95"
+            title="شاشة التداول"
+          >
+            📈
+          </button>
+          <button onClick={() => { setShowVault(true); setVaultUnlocked(false); setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' }); }} className="p-3 bg-yellow-400 rounded-2xl text-yellow-950 border-2 border-yellow-500 shadow-sm active:bg-yellow-500"><Icons.Vault /></button>
+        </div>
       </div>
 
       {/* Goal Progress */}
@@ -241,11 +261,50 @@ const App: React.FC = () => {
       </div>
 
       {/* Net Balance */}
-      <div className="bg-[#1e293b] rounded-[3rem] p-8 text-white mb-8 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10">
+      <div className="bg-[#1e293b] rounded-[3rem] p-8 text-white mb-6 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10">
         <p className="text-blue-300 font-black mb-1 text-lg uppercase tracking-tight opacity-80">الصافي المتبقي لك</p>
         <h2 className="text-6xl font-black tracking-tighter flex items-baseline gap-2">
           {(netBalance || 0).toLocaleString()} <span className="text-xl font-bold opacity-40">أوقية</span>
         </h2>
+      </div>
+
+      {/* Quick Access Analytics Banners */}
+      <div className="grid grid-cols-2 gap-3 mb-6 z-10">
+        <button
+          onClick={() => setShowWeeklyAnalytics(true)}
+          className="p-3.5 rounded-3xl bg-[#0e1628] text-blue-400 border-2 border-slate-800 flex flex-col justify-between items-start shadow-lg active:scale-95 transition-all relative overflow-hidden group text-right h-28"
+        >
+          <div className="flex justify-between items-center w-full">
+            <div className="w-9 h-9 rounded-2xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-lg">
+              📊
+            </div>
+            <span className="text-[10px] font-black bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-lg border border-blue-500/30">
+              مقارنة ↗
+            </span>
+          </div>
+          <div>
+            <p className="font-black text-white text-xs leading-tight">التحليل الأسبوعي</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">مقارنة الأسابيع و 7 أيام</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setShowTrading(true)}
+          className="p-3.5 rounded-3xl bg-[#0b101d] text-emerald-400 border-2 border-slate-800 flex flex-col justify-between items-start shadow-lg active:scale-95 transition-all relative overflow-hidden group text-right h-28"
+        >
+          <div className="flex justify-between items-center w-full">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-lg">
+              📈
+            </div>
+            <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-lg border border-emerald-500/30">
+              تداول ↗
+            </span>
+          </div>
+          <div>
+            <p className="font-black text-white text-xs leading-tight">شاشة التداول</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">مؤشرات الأرباح والوقود</p>
+          </div>
+        </button>
       </div>
 
       {/* Action Grid (6 Buttons) with Neon Glows */}
@@ -421,6 +480,16 @@ const App: React.FC = () => {
             تطبيق محفظة السائق v3.0 Interactive
           </div>
         </div>
+      )}
+
+      {/* Trading Dashboard Fullscreen View */}
+      {showTrading && (
+        <TradingDashboard data={data} onClose={() => setShowTrading(false)} />
+      )}
+
+      {/* Weekly Analytics Comparative View */}
+      {showWeeklyAnalytics && (
+        <WeeklyAnalytics data={data} onClose={() => setShowWeeklyAnalytics(false)} />
       )}
     </div>
   );
