@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry } from './types';
-import { getInitialData, saveData, exportData } from './services/storage';
+import { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry, VacationFund } from './types';
+import { getInitialData, saveData, exportData, getWorkingDate } from './services/storage';
 import { Icons, CURRENCY } from './constants';
 import Keypad from './components/Keypad';
 import TradingDashboard from './components/TradingDashboard';
 import WeeklyAnalytics from './components/WeeklyAnalytics';
+import { VacationFundModal } from './components/VacationFundModal';
+import { VacationRewardScreen } from './components/VacationRewardScreen';
 
 const App: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
@@ -26,6 +28,8 @@ const App: React.FC = () => {
   const [showObjectives, setShowObjectives] = useState(false);
   const [showTrading, setShowTrading] = useState(false);
   const [showWeeklyAnalytics, setShowWeeklyAnalytics] = useState(false);
+  const [showVacationModal, setShowVacationModal] = useState(false);
+  const [testVacationReward, setTestVacationReward] = useState(false);
   
   const [tempEarningsValue, setTempEarningsValue] = useState<number | null>(null);
 
@@ -59,7 +63,8 @@ const App: React.FC = () => {
     } else if (activeInput.type === 'withdrawVault') {
       const entry: VaultEntry = {
         date: new Date().toISOString().split('T')[0],
-        amount: -numValue
+        amount: -numValue,
+        note: 'سحب يدوي من الخزنة'
       };
       newData.vault.push(entry);
     } else if (activeInput.type === 'tempEarnings') {
@@ -163,6 +168,69 @@ const App: React.FC = () => {
     }
   };
 
+  const handleManualSettlement = () => {
+    if (!data) return;
+    const totalDeductions = data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0);
+    const net = data.currentDay.earnings - totalDeductions;
+    const newData = { ...data };
+    
+    if (net !== 0) {
+      newData.vault.push({
+        date: newData.currentDay.date,
+        amount: net,
+        note: net < 0 ? 'تغطية عجز يومي (مشتريات/مصاريف)' : 'ترحيل أرباح يومية'
+      });
+      
+      // Transfer surplus into vacation fund if not completed yet
+      if (net > 0 && newData.vacationFund && newData.vacationFund.enabled) {
+        if (newData.vacationFund.savedAmount < newData.vacationFund.targetAmount) {
+          const needed = newData.vacationFund.targetAmount - newData.vacationFund.savedAmount;
+          const contribution = Math.min(net, needed);
+          newData.vacationFund.savedAmount += contribution;
+        }
+      }
+    }
+    
+    const currentWorkingDate = getWorkingDate();
+    const activeGoal = newData.settings.dailyGoal || 1000;
+    newData.currentDay = {
+      date: currentWorkingDate,
+      earnings: 0,
+      ownerShare: 0,
+      fuel: 0,
+      purchases: 0,
+      objectivePayments: 0,
+      goal: activeGoal,
+      operations: []
+    };
+    newData.lastSettlementDate = currentWorkingDate;
+    setData(newData);
+    saveData(newData);
+  };
+
+  const handleUpdateVacationFund = (fund: VacationFund) => {
+    if (!data) return;
+    const newData = { ...data, vacationFund: fund };
+    setData(newData);
+    saveData(newData);
+  };
+
+  const handleWithdrawVacationExpense = (amount: number) => {
+    if (!data) return;
+    const newData = { ...data };
+    const currentSaved = newData.vacationFund?.savedAmount || 0;
+    if (newData.vacationFund) {
+      newData.vacationFund.savedAmount = Math.max(0, currentSaved - amount);
+    }
+    newData.vault.push({
+      date: new Date().toISOString().split('T')[0],
+      amount: -amount,
+      note: 'سحب مصروف العطلة والراحة 🏖️'
+    });
+    setData(newData);
+    saveData(newData);
+  };
+
   const handleCancel = useCallback(() => {
     setActiveInput(null);
     setInputValue('');
@@ -200,6 +268,23 @@ const App: React.FC = () => {
     return `hsl(${hue}, 85%, 45%)`;
   };
 
+  // Check if today is the designated rest day AND the vacation target is reached
+  const isRestDayToday = now.getDay() === (data.vacationFund?.restDay ?? 5);
+  const isVacationTargetReached = (data.vacationFund?.savedAmount ?? 0) >= (data.vacationFund?.targetAmount ?? 2000);
+  const isVacationActiveToday = (data.vacationFund?.enabled ?? true) && isRestDayToday && isVacationTargetReached;
+
+  // Render Lockout Reward Screen when conditions are met OR during test mode
+  if (isVacationActiveToday || testVacationReward) {
+    return (
+      <VacationRewardScreen
+        data={data}
+        isTestMode={testVacationReward}
+        onCloseTestMode={() => setTestVacationReward(false)}
+        onWithdrawVacationExpense={handleWithdrawVacationExpense}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen max-w-md mx-auto bg-[#F9FAFB] flex flex-col p-4 pb-24 select-none relative overflow-x-hidden">
       {/* Header */}
@@ -211,18 +296,11 @@ const App: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => setShowWeeklyAnalytics(true)} 
-            className="p-3 bg-slate-900 rounded-2xl text-blue-400 border-2 border-slate-700 shadow-sm active:bg-slate-800 text-lg font-black flex items-center justify-center transition-transform active:scale-95"
-            title="التحليل الأسبوعي"
+            onClick={() => setShowVacationModal(true)} 
+            className="p-3 bg-emerald-900 rounded-2xl text-emerald-300 border-2 border-emerald-700 shadow-sm active:bg-emerald-800 text-lg font-black flex items-center justify-center transition-transform active:scale-95"
+            title="صندوق العطلة والراحة"
           >
-            📊
-          </button>
-          <button 
-            onClick={() => setShowTrading(true)} 
-            className="p-3 bg-slate-900 rounded-2xl text-emerald-400 border-2 border-slate-700 shadow-sm active:bg-slate-800 text-lg font-black flex items-center justify-center transition-transform active:scale-95"
-            title="شاشة التداول"
-          >
-            📈
+            🏖️
           </button>
           <button onClick={() => { setShowVault(true); setVaultUnlocked(false); setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' }); }} className="p-3 bg-yellow-400 rounded-2xl text-yellow-950 border-2 border-yellow-500 shadow-sm active:bg-yellow-500"><Icons.Vault /></button>
         </div>
@@ -306,6 +384,8 @@ const App: React.FC = () => {
           </div>
         </button>
       </div>
+
+
 
       {/* Action Grid (6 Buttons) with Neon Glows */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-6 flex-grow mb-4 relative">
@@ -412,12 +492,23 @@ const App: React.FC = () => {
             <h3 className="text-6xl font-black tracking-tighter mb-6">
               {(data.vault.reduce((acc, curr) => acc + curr.amount, 0) || 0).toLocaleString()} <span className="text-xl font-bold">أوقية</span>
             </h3>
-            <button 
-              onClick={() => setActiveInput({ type: 'withdrawVault', title: 'مبلغ السحب من الخزنة' })}
-              className="w-full bg-yellow-950 text-white p-5 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-all border-b-8 border-yellow-900"
-            >
-              سحب مبلغ 💸
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button 
+                onClick={() => setActiveInput({ type: 'withdrawVault', title: 'مبلغ السحب من الخزنة' })}
+                className="w-full bg-yellow-950 text-white p-4 rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-all border-b-4 border-yellow-900"
+              >
+                سحب مبلغ 💸
+              </button>
+              <button 
+                onClick={() => {
+                  handleManualSettlement();
+                  alert('تمت تسوية اليوم وتغطية أي عجز أو ترحيل الفائض إلى الخزنة بنجاح!');
+                }}
+                className="w-full bg-yellow-800 text-white p-4 rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-all border-b-4 border-yellow-900"
+              >
+                تسوية وتغطية العجز 🔄
+              </button>
+            </div>
           </div>
           <div className="space-y-4 pb-10">
             <h4 className="font-black text-gray-400 border-b-2 border-gray-100 pb-2 mb-2">سجل الحركات</h4>
@@ -426,7 +517,9 @@ const App: React.FC = () => {
               <div key={idx} className="flex justify-between items-center p-6 bg-white rounded-3xl border-2 border-gray-100 shadow-sm font-black">
                 <div className="flex flex-col">
                    <span className="text-gray-400 text-xs">{entry.date}</span>
-                   <span className="text-gray-800">{entry.amount < 0 ? 'عملية سحب' : 'ترحيل يومي'}</span>
+                   <span className="text-gray-800">
+                     {entry.note || (entry.amount < 0 ? 'تغطية عجز يومي / سحب' : 'ترحيل أرباح يومية')}
+                   </span>
                 </div>
                 <span className={`text-2xl ${entry.amount < 0 ? 'text-red-600' : 'text-green-700'}`}>
                   {entry.amount < 0 ? '' : '+'}{(entry.amount || 0).toLocaleString()}
@@ -476,10 +569,45 @@ const App: React.FC = () => {
             </div>
           </div>
 
+          {/* Vacation Fund Settings Card */}
+          <div className="bg-white p-6 rounded-[2rem] border-4 border-emerald-100 shadow-md mb-6" onClick={() => setShowVacationModal(true)}>
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🏖️</span>
+                <h3 className="font-black text-gray-800">صندوق العطلة والراحة</h3>
+              </div>
+              <span className="text-xs font-black bg-emerald-100 text-emerald-800 px-3 py-1 rounded-xl">
+                {(data.vacationFund?.savedAmount || 0).toLocaleString()} / {(data.vacationFund?.targetAmount || 2000).toLocaleString()} أوقية
+              </span>
+            </div>
+            <p className="text-xs font-bold text-gray-500 mb-4">
+              إعداد المبلغ التراكمي المطلوبة للإجازة ويوم الراحة المعتمد وإمكانية الاختبار والمعاينة.
+            </p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowVacationModal(true);
+              }}
+              className="w-full bg-emerald-900 text-emerald-200 p-3 rounded-2xl font-black text-sm border-2 border-emerald-700 shadow-sm active:scale-95 transition-all text-center"
+            >
+              ضبط إعدادات العطلة ⚙️
+            </button>
+          </div>
+
           <div className="bg-white p-6 rounded-3xl border-2 border-gray-100 text-gray-500 font-bold text-center">
             تطبيق محفظة السائق v3.0 Interactive
           </div>
         </div>
+      )}
+
+      {/* Vacation Fund Modal */}
+      {showVacationModal && (
+        <VacationFundModal
+          data={data}
+          onUpdateVacationFund={handleUpdateVacationFund}
+          onClose={() => setShowVacationModal(false)}
+          onTestRewardScreen={() => setTestVacationReward(true)}
+        />
       )}
 
       {/* Trading Dashboard Fullscreen View */}

@@ -44,8 +44,12 @@ export const getInitialData = (): AppData => {
          data.currentDay.purchases + 
          (data.currentDay.objectivePayments || 0)
        );
-       if (net > 0) {
-         data.vault.push({ date: data.currentDay.date, amount: net });
+       if (net !== 0) {
+         data.vault.push({ 
+           date: data.currentDay.date, 
+           amount: net,
+           note: net < 0 ? 'تغطية عجز يومي (مشتريات/مصاريف)' : 'ترحيل أرباح يومية'
+         });
        }
        
        const activeGoal = data.settings.dailyGoal === 500 ? 1000 : (data.settings.dailyGoal || 1000);
@@ -62,10 +66,19 @@ export const getInitialData = (): AppData => {
        saveData(data);
     }
 
-    // Migration: Ensure objectives, operations and monthlyGoal exist
+    // Migration: Ensure objectives, operations, monthlyGoal and vacationFund exist
     if (!data.objectives) data.objectives = [];
     if (!data.currentDay.operations) data.currentDay.operations = [];
     if (!data.settings.monthlyGoal) data.settings.monthlyGoal = 30000;
+    if (!data.vacationFund) {
+      data.vacationFund = {
+        targetAmount: 2000,
+        savedAmount: 0,
+        restDay: 5, // الجمعة افتراضياً
+        spendingBudget: 1500,
+        enabled: true
+      };
+    }
     return data;
   }
   
@@ -77,6 +90,13 @@ export const getInitialData = (): AppData => {
       dailyGoal: 1000,
       monthlyGoal: 30000,
       vaultPin: INITIAL_PIN
+    },
+    vacationFund: {
+      targetAmount: 2000,
+      savedAmount: 0,
+      restDay: 5, // الجمعة افتراضياً
+      spendingBudget: 1500,
+      enabled: true
     },
     lastSettlementDate: currentWorkingDate
   };

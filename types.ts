@@ -31,6 +31,15 @@ export interface DailyStats {
 export interface VaultEntry {
   date: string;
   amount: number;
+  note?: string;
+}
+
+export interface VacationFund {
+  targetAmount: number;
+  savedAmount: number;
+  restDay: number; // 0=الأحد, 1=الإثنين, 2=الثلاثاء, 3=الأربعاء, 4=الخميس, 5=الجمعة, 6=السبت
+  spendingBudget: number;
+  enabled: boolean;
 }
 
 export interface AppSettings {
@@ -44,5 +53,6 @@ export interface AppData {
   vault: VaultEntry[];
   objectives: Objective[];
   settings: AppSettings;
+  vacationFund?: VacationFund;
   lastSettlementDate: string;
 }
