@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry, VacationFund } from './types';
 import { getInitialData, saveData, exportData, getWorkingDate } from './services/storage';
 import { Icons, CURRENCY } from './constants';
@@ -32,10 +32,33 @@ const App: React.FC = () => {
   const [testVacationReward, setTestVacationReward] = useState(false);
   
   const [tempEarningsValue, setTempEarningsValue] = useState<number | null>(null);
+  const [courseTitle, setCourseTitle] = useState('');
+  const [fromLocation, setFromLocation] = useState('');
+  const [toLocation, setToLocation] = useState('');
 
   useEffect(() => {
     setData(getInitialData());
   }, []);
+
+  const isDuplicateCourse = useMemo(() => {
+    if (!data || !activeInput || activeInput.type !== 'tempEarnings') return false;
+    const currentOps = data.currentDay.operations || [];
+    const normalizedTitle = courseTitle.trim().toLowerCase();
+    const normalizedFrom = fromLocation.trim().toLowerCase();
+    const normalizedTo = toLocation.trim().toLowerCase();
+
+    if (!normalizedTitle && !normalizedFrom && !normalizedTo) return false;
+
+    return currentOps.some(op => {
+      if (op.type !== 'earnings') return false;
+      if (normalizedTitle && op.courseTitle && op.courseTitle.trim().toLowerCase() === normalizedTitle) return true;
+      if (normalizedTitle && op.label && op.label.trim().toLowerCase().includes(normalizedTitle)) return true;
+      if (normalizedFrom && normalizedTo && op.fromLocation && op.toLocation) {
+        if (op.fromLocation.trim().toLowerCase() === normalizedFrom && op.toLocation.trim().toLowerCase() === normalizedTo) return true;
+      }
+      return false;
+    });
+  }, [data, activeInput, courseTitle, fromLocation, toLocation]);
 
   const handleUpdateValue = useCallback(() => {
     if (!data || !activeInput) return;
@@ -76,16 +99,33 @@ const App: React.FC = () => {
       newData.currentDay.earnings += tempEarningsValue;
       newData.currentDay.ownerShare += numValue;
       
+      const courseCount = newData.currentDay.operations.filter(o => o.type === 'earnings').length + 1;
+      const finalCourseTitle = courseTitle.trim() || (fromLocation.trim() && toLocation.trim() ? `${fromLocation.trim()} ➔ ${toLocation.trim()}` : `مكور #${courseCount}`);
+      const finalLabel = `كسب (${finalCourseTitle})`;
+
       const newOpE: Operation = {
         id: Math.random().toString(36).substr(2, 9),
-        type: 'earnings', amount: tempEarningsValue, label: 'كسب جديد', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        type: 'earnings',
+        amount: tempEarningsValue,
+        label: finalLabel,
+        courseTitle: finalCourseTitle,
+        fromLocation: fromLocation.trim() || undefined,
+        toLocation: toLocation.trim() || undefined,
+        timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
       };
       const newOpS: Operation = {
         id: Math.random().toString(36).substr(2, 9),
-        type: 'ownerShare', amount: numValue, label: 'نسبة المالك', timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        type: 'ownerShare',
+        amount: numValue,
+        label: `نسبة المالك (${finalCourseTitle})`,
+        courseTitle: finalCourseTitle,
+        timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
       };
       newData.currentDay.operations.push(newOpE, newOpS);
       setTempEarningsValue(null);
+      setCourseTitle('');
+      setFromLocation('');
+      setToLocation('');
     } else if (activeInput.type === 'editOperation' && activeInput.operationId) {
       const opIndex = newData.currentDay.operations.findIndex(o => o.id === activeInput.operationId);
       if (opIndex > -1) {
@@ -235,6 +275,9 @@ const App: React.FC = () => {
     setActiveInput(null);
     setInputValue('');
     setTempEarningsValue(null);
+    setCourseTitle('');
+    setFromLocation('');
+    setToLocation('');
     if (showVault && !vaultUnlocked) setShowVault(false);
   }, [showVault, vaultUnlocked]);
 
@@ -401,37 +444,95 @@ const App: React.FC = () => {
       {activeInput && (
         <div className="fixed inset-0 bg-black/70 z-[100] backdrop-blur-md flex items-end" onClick={handleCancel}>
           <div className="w-full" onClick={e => e.stopPropagation()}>
-            <Keypad title={activeInput.title} value={inputValue} onInput={(v) => setInputValue(prev => prev + v)} onClear={() => setInputValue('')} onConfirm={handleUpdateValue} onCancel={handleCancel} />
+            <Keypad
+              title={activeInput.title}
+              value={inputValue}
+              onInput={(v) => setInputValue(prev => prev + v)}
+              onClear={() => setInputValue('')}
+              onConfirm={handleUpdateValue}
+              onCancel={handleCancel}
+              isCourseInput={activeInput.type === 'tempEarnings'}
+              courseTitle={courseTitle}
+              setCourseTitle={setCourseTitle}
+              fromLocation={fromLocation}
+              setFromLocation={setFromLocation}
+              toLocation={toLocation}
+              setToLocation={setToLocation}
+              isDuplicateCourse={isDuplicateCourse}
+            />
           </div>
         </div>
       )}
 
       {/* Operations List */}
       {showOpsList && (
-        <div className="fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-6">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-black text-gray-900">العمليات اليومية 📋</h2>
-            <button onClick={() => setShowOpsList(false)} className="p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6">إغلاق ✕</button>
+        <div className="fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-4 sm:p-6 font-['Cairo',sans-serif]">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 flex items-center gap-2">
+                <span>العمليات والمكورات اليومية</span>
+                <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-black">
+                  {data.currentDay.operations.length}
+                </span>
+              </h2>
+              <p className="text-xs text-gray-500 font-bold mt-1">سجل تفصيلي لجميع المشاوير والنفقات لتجنب التكرار المزدوج</p>
+            </div>
+            <button onClick={() => setShowOpsList(false)} className="p-2.5 sm:p-3 bg-red-100 hover:bg-red-200 rounded-2xl font-black text-red-700 px-5 text-sm transition-all active:scale-95">
+              إغلاق ✕
+            </button>
           </div>
-          <div className="space-y-4">
-            {data.currentDay.operations.length === 0 && <div className="text-center text-gray-400 py-20 font-bold">لم تقم بأي عمليات اليوم</div>}
-            {[...data.currentDay.operations].reverse().map(op => (
-              <div key={op.id} className="bg-white p-5 rounded-3xl border-2 border-gray-100 flex justify-between items-center shadow-sm">
-                <div>
-                  <p className="font-black text-gray-800">{op.label}</p>
-                  <p className="text-xs font-bold text-gray-400">{op.timestamp}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className={`font-black text-xl ${op.type === 'earnings' ? 'text-green-600' : 'text-red-500'}`}>
-                    {op.type === 'earnings' ? '+' : '-'}{(op.amount || 0).toLocaleString()}
-                  </span>
-                  <div className="flex gap-2">
-                    <button onClick={() => setActiveInput({ type: 'editOperation', title: 'تعديل المبلغ', operationId: op.id })} className="p-2 bg-blue-50 text-blue-600 rounded-xl">✎</button>
-                    <button onClick={() => deleteOperation(op.id)} className="p-2 bg-red-50 text-red-600 rounded-xl">🗑</button>
+
+          <div className="space-y-3">
+            {data.currentDay.operations.length === 0 && (
+              <div className="text-center text-gray-400 py-20 font-bold bg-white rounded-3xl border border-gray-100 p-8">
+                <span className="text-4xl block mb-2">📋</span>
+                لم تقم بتسجيل أي مكور أو عملية اليوم
+              </div>
+            )}
+
+            {[...data.currentDay.operations].reverse().map((op, idx) => {
+              const hasRoute = op.fromLocation || op.toLocation;
+              return (
+                <div key={op.id} className="bg-white p-4 sm:p-5 rounded-3xl border-2 border-gray-100 flex justify-between items-center shadow-sm hover:border-blue-100 transition-all">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`w-2.5 h-2.5 rounded-full ${op.type === 'earnings' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      <p className="font-black text-gray-800 text-sm sm:text-base">{op.label}</p>
+                      {op.courseTitle && (
+                        <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
+                          🚖 {op.courseTitle}
+                        </span>
+                      )}
+                    </div>
+
+                    {hasRoute && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold pr-4">
+                        <span>📍</span>
+                        <span>{op.fromLocation || 'غير محدد'}</span>
+                        <span className="text-blue-500">➔</span>
+                        <span>{op.toLocation || 'غير محدد'}</span>
+                      </div>
+                    )}
+
+                    <p className="text-[11px] font-bold text-gray-400 pr-4">{op.timestamp}</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <span className={`font-black text-lg sm:text-xl dir-ltr ${op.type === 'earnings' ? 'text-green-600' : 'text-red-500'}`}>
+                      {op.type === 'earnings' ? '+' : '-'}{(op.amount || 0).toLocaleString()} <span className="text-xs">أوقية</span>
+                    </span>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setActiveInput({ type: 'editOperation', title: 'تعديل المبلغ', operationId: op.id })} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-all" title="تعديل">
+                        ✎
+                      </button>
+                      <button onClick={() => deleteOperation(op.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all" title="حذف">
+                        🗑
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

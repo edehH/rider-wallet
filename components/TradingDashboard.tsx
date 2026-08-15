@@ -17,7 +17,9 @@ interface DataPoint {
 
 export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClose }) => {
   const [timeframe, setTimeframe] = useState<Timeframe>('today');
+  const [chartMode, setChartMode] = useState<'zigzag' | 'smooth'>('zigzag');
   const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
+  const [isChartFullscreen, setIsChartFullscreen] = useState<boolean>(false);
   const [visibleLines, setVisibleLines] = useState<{ green: boolean; yellow: boolean; red: boolean }>({
     green: true,
     yellow: true,
@@ -30,37 +32,69 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
     const vault = data.vault || [];
 
     if (timeframe === 'today') {
-      // 6 Time slots throughout the day
-      const hours = ['08:00', '11:00', '14:00', '17:00', '20:00', '23:00'];
-      let cumE = 0;
-      let cumY = 0;
-      let cumR = 0;
+      if (ops.length === 0) {
+        // Default baseline day timeline before operations start
+        const defaultSlots = ['08:00', '11:00', '14:00', '17:00', '20:00', '23:00'];
+        const baseFactor = (data.currentDay.earnings > 0 ? data.currentDay.earnings : 0);
+        return defaultSlots.map((hour, idx) => {
+          const factor = (idx + 1) / defaultSlots.length;
+          const net = Math.max(0, data.currentDay.earnings - (data.currentDay.fuel + data.currentDay.ownerShare + data.currentDay.purchases));
+          return {
+            label: hour,
+            green: Math.round(net * factor),
+            yellow: Math.round((data.currentDay.fuel + data.currentDay.ownerShare) * factor),
+            red: Math.round(data.currentDay.purchases * factor),
+          };
+        });
+      }
 
-      // Map current day operations into cumulative slots
-      return hours.map((hour, idx) => {
-        // Find operations logged around or before this index
-        const subset = ops.filter((_, i) => Math.floor((i / Math.max(ops.length, 1)) * hours.length) <= idx);
-        
-        cumE = subset.filter(o => o.type === 'earnings').reduce((s, o) => s + o.amount, 0);
-        const owner = subset.filter(o => o.type === 'ownerShare').reduce((s, o) => s + o.amount, 0);
-        const fuel = subset.filter(o => o.type === 'fuel').reduce((s, o) => s + o.amount, 0);
-        const pur = subset.filter(o => o.type === 'purchases').reduce((s, o) => s + o.amount, 0);
-        const objP = subset.filter(o => o.type === 'objectivePayment').reduce((s, o) => s + o.amount, 0);
+      // Step-by-step transaction timeline (Real Stock Market ZigZag)
+      // Point 0: Beginning of shift
+      const points: DataPoint[] = [
+        {
+          label: '08:00 (البداية)',
+          green: 0,
+          yellow: 0,
+          red: 0,
+        }
+      ];
 
-        cumY = owner + fuel + objP;
-        cumR = pur;
+      let runningGreen = 0;
+      let runningYellow = 0;
+      let runningRed = 0;
 
-        // Ensure baseline fallback if no operations exist yet
-        const baseFactor = (idx + 1) / hours.length;
-        const netE = Math.max(0, cumE - cumY - cumR);
+      ops.forEach((op, index) => {
+        if (op.type === 'earnings') {
+          runningGreen += op.amount;
+        } else if (op.type === 'ownerShare' || op.type === 'fuel' || op.type === 'objectivePayment') {
+          runningYellow += op.amount;
+          runningGreen -= op.amount; // Expenses pull the net curve down!
+        } else if (op.type === 'purchases') {
+          runningRed += op.amount;
+          runningGreen -= op.amount; // Purchases pull the net curve down!
+        }
 
-        return {
-          label: hour,
-          green: ops.length > 0 ? netE : Math.round(data.currentDay.earnings * baseFactor * 0.7),
-          yellow: ops.length > 0 ? cumY : Math.round((data.currentDay.fuel + data.currentDay.ownerShare) * baseFactor),
-          red: ops.length > 0 ? cumR : Math.round(data.currentDay.purchases * baseFactor),
-        };
+        const tag = op.courseTitle ? `🚖 ${op.courseTitle}` : op.label;
+        points.push({
+          label: `${op.timestamp || `عملية #${index + 1}`} (${tag})`,
+          green: Math.max(0, runningGreen),
+          yellow: runningYellow,
+          red: runningRed,
+        });
       });
+
+      // If shift is active and only 1-2 ops exist, append a steady current plateau point
+      if (points.length < 5) {
+        const lastP = points[points.length - 1];
+        points.push({
+          label: 'الآن (استقرار ➔)',
+          green: lastP.green,
+          yellow: lastP.yellow,
+          red: lastP.red,
+        });
+      }
+
+      return points;
     }
 
     if (timeframe === 'week') {
@@ -228,6 +262,10 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
       const x = getX(idx);
       const y = getY(point[key]);
       if (idx === 0) return `M ${x} ${y}`;
+      if (chartMode === 'zigzag') {
+        // Electronic Stock Market Zig-Zag Line (Sharp direct segments)
+        return `${acc} L ${x} ${y}`;
+      }
       // Smooth cubic bezier path
       const prevX = getX(idx - 1);
       const prevY = getY(chartPoints[idx - 1][key]);
@@ -244,6 +282,20 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
     const firstX = getX(0);
     const bottomY = svgHeight - paddingY;
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+  };
+
+  const getArrowAngle = (key: 'green' | 'yellow' | 'red') => {
+    if (chartPoints.length < 2) return 0;
+    const lastIdx = chartPoints.length - 1;
+    const prevIdx = lastIdx - 1;
+    const x2 = getX(lastIdx);
+    const y2 = getY(chartPoints[lastIdx][key]);
+    const x1 = getX(prevIdx);
+    const y1 = getY(chartPoints[prevIdx][key]);
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return (Math.atan2(dy, dx) * 180) / Math.PI;
   };
 
   return (
@@ -411,14 +463,27 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
 
         {/* Main Trading Chart Canvas (SVG Dynamic Chart) */}
         <div className="bg-[#0b101d] border border-slate-800/90 rounded-3xl p-4 shadow-2xl relative overflow-hidden">
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <h2 className="text-xs font-black text-slate-300">مخطط اتجاهات الأسهم والسباق الزمني</h2>
               <span className="text-[10px] text-slate-500 font-semibold">(انقر لتحديد نقطة)</span>
             </div>
 
-            {/* Interactive Legend Toggles */}
-            <div className="flex items-center gap-2 text-[10px] font-bold">
+            {/* Interactive Legend Toggles & Mode Switcher & Top Corner Expand Button */}
+            <div className="flex items-center gap-1.5 text-[10px] font-bold flex-wrap">
+              {/* Mode Toggle Button: Zigzag vs Smooth */}
+              <button
+                onClick={() => setChartMode(m => m === 'zigzag' ? 'smooth' : 'zigzag')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border transition-all active:scale-95 ${
+                  chartMode === 'zigzag'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.2)]'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                }`}
+                title="التبديل بين الأسهم المتعرجة (البورصة) والمنحنى الناعم"
+              >
+                <span>{chartMode === 'zigzag' ? '⚡ متعرج (بورصة)' : '🌊 منحنى ناعم'}</span>
+              </button>
+
               <button
                 onClick={() => setVisibleLines(v => ({ ...v, green: !v.green }))}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all ${
@@ -452,6 +517,16 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                 <span className="w-2 h-2 rounded-full bg-rose-400" />
                 استهلاك
               </button>
+
+              {/* Fullscreen Expand Button in Top Corner */}
+              <button
+                onClick={() => setIsChartFullscreen(true)}
+                className="p-1 px-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs border border-emerald-400/50 shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all active:scale-95 flex items-center gap-1"
+                title="تكبير المخطط لملء الشاشة بالكامل"
+              >
+                <span>⛶</span>
+                <span className="text-[10px]">تكبير</span>
+              </button>
             </div>
           </div>
 
@@ -463,6 +538,41 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
               preserveAspectRatio="none"
             >
               <defs>
+                {/* Sharp Vector Arrowhead Markers */}
+                <marker
+                  id="arrowGreen"
+                  viewBox="0 0 10 10"
+                  refX="8"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto"
+                >
+                  <polygon points="0,1 10,5 0,9 3,5" fill="#10b981" />
+                </marker>
+                <marker
+                  id="arrowYellow"
+                  viewBox="0 0 10 10"
+                  refX="8"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto"
+                >
+                  <polygon points="0,1 10,5 0,9 3,5" fill="#f59e0b" />
+                </marker>
+                <marker
+                  id="arrowRed"
+                  viewBox="0 0 10 10"
+                  refX="8"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto"
+                >
+                  <polygon points="0,1 10,5 0,9 3,5" fill="#ef4444" />
+                </marker>
+
                 {/* Gradients */}
                 <linearGradient id="greenGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
@@ -546,7 +656,7 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                 <path d={generateAreaPath('red')} fill="url(#redGradient)" />
               )}
 
-              {/* Stroke Curves */}
+              {/* Stroke Curves with Vector Sharp Arrowhead Markers */}
               {visibleLines.green && (
                 <path
                   d={generatePath('green')}
@@ -554,6 +664,7 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                   stroke="#10b981"
                   strokeWidth="3.5"
                   strokeLinecap="round"
+                  markerEnd="url(#arrowGreen)"
                   filter="url(#glowGreen)"
                 />
               )}
@@ -564,6 +675,7 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                   stroke="#f59e0b"
                   strokeWidth="2.5"
                   strokeLinecap="round"
+                  markerEnd="url(#arrowYellow)"
                   filter="url(#glowYellow)"
                 />
               )}
@@ -574,11 +686,59 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                   stroke="#ef4444"
                   strokeWidth="2.5"
                   strokeLinecap="round"
+                  markerEnd="url(#arrowRed)"
                   filter="url(#glowRed)"
                 />
               )}
 
-              {/* Trend Arrowheads & End Points */}
+              {/* Connected Sharp Vector Pointer Arrowheads at Curve Tips */}
+              {chartPoints.length > 1 && (
+                <>
+                  {/* Green Sharp Vector Arrow Head */}
+                  {visibleLines.green && (
+                    <g
+                      transform={`translate(${getX(chartPoints.length - 1)}, ${getY(chartPoints[chartPoints.length - 1].green)}) rotate(${getArrowAngle('green')})`}
+                    >
+                      <polygon
+                        points="-12,-6 4,0 -12,6 -7,0"
+                        fill="#10b981"
+                        stroke="#070a11"
+                        strokeWidth="1.5"
+                      />
+                    </g>
+                  )}
+
+                  {/* Yellow Sharp Vector Arrow Head */}
+                  {visibleLines.yellow && (
+                    <g
+                      transform={`translate(${getX(chartPoints.length - 1)}, ${getY(chartPoints[chartPoints.length - 1].yellow)}) rotate(${getArrowAngle('yellow')})`}
+                    >
+                      <polygon
+                        points="-10,-5 3,0 -10,5 -6,0"
+                        fill="#f59e0b"
+                        stroke="#070a11"
+                        strokeWidth="1.5"
+                      />
+                    </g>
+                  )}
+
+                  {/* Red Sharp Vector Arrow Head */}
+                  {visibleLines.red && (
+                    <g
+                      transform={`translate(${getX(chartPoints.length - 1)}, ${getY(chartPoints[chartPoints.length - 1].red)}) rotate(${getArrowAngle('red')})`}
+                    >
+                      <polygon
+                        points="-10,-5 3,0 -10,5 -6,0"
+                        fill="#ef4444"
+                        stroke="#070a11"
+                        strokeWidth="1.5"
+                      />
+                    </g>
+                  )}
+                </>
+              )}
+
+              {/* Chart Points & Labels */}
               {chartPoints.map((pt, idx) => {
                 const x = getX(idx);
                 const isLast = idx === chartPoints.length - 1;
@@ -604,16 +764,34 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                         <circle
                           cx={x}
                           cy={getY(pt.green)}
-                          r={isLast ? 6 : 3.5}
+                          r={isLast ? 5.5 : 4}
                           fill="#10b981"
                           stroke="#070a11"
                           strokeWidth="2"
                         />
+                        {/* Delta indicator for step */}
+                        {idx > 0 && (
+                          <g transform={`translate(${x}, ${getY(pt.green) - 12})`}>
+                            {pt.green > chartPoints[idx - 1].green ? (
+                              <text x="0" y="0" fill="#34d399" fontSize="8" fontWeight="bold" textAnchor="middle">
+                                ▲+{pt.green - chartPoints[idx - 1].green}
+                              </text>
+                            ) : pt.green < chartPoints[idx - 1].green ? (
+                              <text x="0" y="0" fill="#f87171" fontSize="8" fontWeight="bold" textAnchor="middle">
+                                ▼{pt.green - chartPoints[idx - 1].green}
+                              </text>
+                            ) : (
+                              <text x="0" y="0" fill="#94a3b8" fontSize="7" fontWeight="bold" textAnchor="middle">
+                                ━ استقرار
+                              </text>
+                            )}
+                          </g>
+                        )}
                         {isLast && (
-                          <g transform={`translate(${x + 12}, ${getY(pt.green) - 6})`}>
-                            <rect x="-2" y="-12" width="22" height="16" rx="4" fill="#10b981" />
-                            <text x="9" y="-1" fill="#070a11" fontSize="10" fontWeight="900" textAnchor="middle">
-                              {totals.isGreenUp ? '↗' : '↘'}
+                          <g transform={`translate(${x + 10}, ${getY(pt.green) - 7})`}>
+                            <rect x="-2" y="-12" width="34" height="15" rx="4" fill="#10b981" />
+                            <text x="15" y="-1" fill="#070a11" fontSize="9" fontWeight="900" textAnchor="middle">
+                              {pt.green.toLocaleString()}
                             </text>
                           </g>
                         )}
@@ -626,16 +804,16 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                         <circle
                           cx={x}
                           cy={getY(pt.yellow)}
-                          r={isLast ? 5 : 3}
+                          r={isLast ? 4.5 : 3}
                           fill="#f59e0b"
                           stroke="#070a11"
                           strokeWidth="2"
                         />
                         {isLast && (
-                          <g transform={`translate(${x + 12}, ${getY(pt.yellow) - 6})`}>
-                            <rect x="-2" y="-12" width="22" height="16" rx="4" fill="#f59e0b" />
-                            <text x="9" y="-1" fill="#070a11" fontSize="10" fontWeight="900" textAnchor="middle">
-                              {totals.isYellowUp ? '↗' : '↘'}
+                          <g transform={`translate(${x + 10}, ${getY(pt.yellow) - 7})`}>
+                            <rect x="-2" y="-12" width="34" height="15" rx="4" fill="#f59e0b" />
+                            <text x="15" y="-1" fill="#070a11" fontSize="9" fontWeight="900" textAnchor="middle">
+                              {pt.yellow.toLocaleString()}
                             </text>
                           </g>
                         )}
@@ -648,16 +826,16 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
                         <circle
                           cx={x}
                           cy={getY(pt.red)}
-                          r={isLast ? 5 : 3}
+                          r={isLast ? 4.5 : 3}
                           fill="#ef4444"
                           stroke="#070a11"
                           strokeWidth="2"
                         />
                         {isLast && (
-                          <g transform={`translate(${x + 12}, ${getY(pt.red) - 6})`}>
-                            <rect x="-2" y="-12" width="22" height="16" rx="4" fill="#ef4444" />
-                            <text x="9" y="-1" fill="#070a11" fontSize="10" fontWeight="900" textAnchor="middle">
-                              {totals.isRedUp ? '↗' : '↘'}
+                          <g transform={`translate(${x + 10}, ${getY(pt.red) - 7})`}>
+                            <rect x="-2" y="-12" width="34" height="15" rx="4" fill="#ef4444" />
+                            <text x="15" y="-1" fill="#070a11" fontSize="9" fontWeight="900" textAnchor="middle">
+                              {pt.red.toLocaleString()}
                             </text>
                           </g>
                         )}
@@ -768,6 +946,295 @@ export const TradingDashboard: React.FC<TradingDashboardProps> = ({ data, onClos
           </div>
         </div>
       </main>
+
+      {/* Fullscreen High-Definition Chart Overlay Modal */}
+      {isChartFullscreen && (
+        <div className="fixed inset-0 z-[250] bg-[#070b14] text-slate-100 flex flex-col p-4 sm:p-6 overflow-y-auto dir-rtl font-['Cairo',sans-serif] animate-fadeIn">
+          {/* Header Bar */}
+          <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-0.5 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+                <div className="w-full h-full bg-[#0d1322] rounded-[14px] flex items-center justify-center text-emerald-400 font-black text-xl">
+                  📈
+                </div>
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <span>مخطط اتجاهات الأسهم والتداول</span>
+                  <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/40">
+                    شاشة كاملة عالي الدقة
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 font-bold">رؤوس مدببة واقعية متصلة بالخطوط وقراءات بيانية دقيقة</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Mode Toggle in Fullscreen */}
+              <button
+                onClick={() => setChartMode(m => m === 'zigzag' ? 'smooth' : 'zigzag')}
+                className={`px-3 py-1.5 rounded-xl border font-bold text-xs transition-all active:scale-95 flex items-center gap-1.5 ${
+                  chartMode === 'zigzag'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                }`}
+              >
+                <span>{chartMode === 'zigzag' ? '⚡ أسهم متعرجة (بورصة)' : '🌊 منحنى ناعم'}</span>
+              </button>
+
+              {/* Category Toggles */}
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <button
+                  onClick={() => setVisibleLines(v => ({ ...v, green: !v.green }))}
+                  className={`px-3 py-1.5 rounded-xl border transition-all ${
+                    visibleLines.green
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-sm'
+                      : 'bg-slate-800/50 text-slate-500 border-slate-700'
+                  }`}
+                >
+                  ● أرباح ({totals.greenTotal.toLocaleString()})
+                </button>
+                <button
+                  onClick={() => setVisibleLines(v => ({ ...v, yellow: !v.yellow }))}
+                  className={`px-3 py-1.5 rounded-xl border transition-all ${
+                    visibleLines.yellow
+                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-sm'
+                      : 'bg-slate-800/50 text-slate-500 border-slate-700'
+                  }`}
+                >
+                  ● تشغيل ({totals.yellowTotal.toLocaleString()})
+                </button>
+                <button
+                  onClick={() => setVisibleLines(v => ({ ...v, red: !v.red }))}
+                  className={`px-3 py-1.5 rounded-xl border transition-all ${
+                    visibleLines.red
+                      ? 'bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-sm'
+                      : 'bg-slate-800/50 text-slate-500 border-slate-700'
+                  }`}
+                >
+                  ● استهلاك ({totals.redTotal.toLocaleString()})
+                </button>
+              </div>
+
+              {/* Close Fullscreen Button */}
+              <button
+                onClick={() => setIsChartFullscreen(false)}
+                className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 font-black text-xs transition-all flex items-center gap-2 shadow-lg active:scale-95"
+              >
+                <span>إغلاق التكبير</span>
+                <span>✕</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Large Expanded SVG Chart Canvas */}
+          <div className="flex-1 bg-[#0b101d] border-2 border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between relative overflow-hidden min-h-[420px]">
+            <div className="relative w-full h-full flex-1">
+              <svg
+                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                className="w-full h-full overflow-visible"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  {/* Sharp Vector Arrowhead Markers */}
+                  <marker id="arrowGreenFs" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                    <polygon points="0,1 10,5 0,9 3,5" fill="#10b981" />
+                  </marker>
+                  <marker id="arrowYellowFs" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                    <polygon points="0,1 10,5 0,9 3,5" fill="#f59e0b" />
+                  </marker>
+                  <marker id="arrowRedFs" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                    <polygon points="0,1 10,5 0,9 3,5" fill="#ef4444" />
+                  </marker>
+
+                  <linearGradient id="greenGradientFs" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="yellowGradientFs" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="redGradientFs" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Grid Lines */}
+                {[0.15, 0.35, 0.55, 0.75, 0.95].map((ratio, i) => {
+                  const y = paddingY + ratio * (svgHeight - paddingY * 2);
+                  return (
+                    <line
+                      key={i}
+                      x1={paddingX}
+                      y1={y}
+                      x2={svgWidth - paddingX}
+                      y2={y}
+                      stroke="#1e293b"
+                      strokeDasharray="4 4"
+                      strokeWidth="1.2"
+                    />
+                  );
+                })}
+
+                {/* Area Fills */}
+                {visibleLines.green && <path d={generateAreaPath('green')} fill="url(#greenGradientFs)" />}
+                {visibleLines.yellow && <path d={generateAreaPath('yellow')} fill="url(#yellowGradientFs)" />}
+                {visibleLines.red && <path d={generateAreaPath('red')} fill="url(#redGradientFs)" />}
+
+                {/* Stroke Curves */}
+                {visibleLines.green && (
+                  <path
+                    d={generatePath('green')}
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    markerEnd="url(#arrowGreenFs)"
+                  />
+                )}
+                {visibleLines.yellow && (
+                  <path
+                    d={generatePath('yellow')}
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    markerEnd="url(#arrowYellowFs)"
+                  />
+                )}
+                {visibleLines.red && (
+                  <path
+                    d={generatePath('red')}
+                    fill="none"
+                    stroke="#ef4444"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    markerEnd="url(#arrowRedFs)"
+                  />
+                )}
+
+                {/* Vector Pointer Arrowheads attached to tip */}
+                {chartPoints.length > 1 && (
+                  <>
+                    {visibleLines.green && (
+                      <g transform={`translate(${getX(chartPoints.length - 1)}, ${getY(chartPoints[chartPoints.length - 1].green)}) rotate(${getArrowAngle('green')})`}>
+                        <polygon points="-14,-7 5,0 -14,7 -8,0" fill="#10b981" stroke="#070a11" strokeWidth="2" />
+                      </g>
+                    )}
+                    {visibleLines.yellow && (
+                      <g transform={`translate(${getX(chartPoints.length - 1)}, ${getY(chartPoints[chartPoints.length - 1].yellow)}) rotate(${getArrowAngle('yellow')})`}>
+                        <polygon points="-12,-6 4,0 -12,6 -7,0" fill="#f59e0b" stroke="#070a11" strokeWidth="2" />
+                      </g>
+                    )}
+                    {visibleLines.red && (
+                      <g transform={`translate(${getX(chartPoints.length - 1)}, ${getY(chartPoints[chartPoints.length - 1].red)}) rotate(${getArrowAngle('red')})`}>
+                        <polygon points="-12,-6 4,0 -12,6 -7,0" fill="#ef4444" stroke="#070a11" strokeWidth="2" />
+                      </g>
+                    )}
+                  </>
+                )}
+
+                {/* Chart Points and Values */}
+                {chartPoints.map((pt, idx) => {
+                  const x = getX(idx);
+                  const isLast = idx === chartPoints.length - 1;
+
+                  return (
+                    <g key={idx} onClick={() => setActivePointIndex(activePointIndex === idx ? null : idx)} className="cursor-pointer">
+                      {activePointIndex === idx && (
+                        <line x1={x} y1={paddingY} x2={x} y2={svgHeight - paddingY} stroke="#38bdf8" strokeDasharray="3 3" strokeWidth="2" />
+                      )}
+
+                      {/* Green */}
+                      {visibleLines.green && (
+                        <g>
+                          <circle cx={x} cy={getY(pt.green)} r={isLast ? 6 : 4} fill="#10b981" stroke="#070a11" strokeWidth="2" />
+                          <text x={x} y={getY(pt.green) - 10} fill="#6ee7b7" fontSize="8" fontWeight="bold" textAnchor="middle">
+                            {pt.green.toLocaleString()}
+                          </text>
+                          {idx > 0 && (
+                            <g transform={`translate(${x}, ${getY(pt.green) - 20})`}>
+                              {pt.green > chartPoints[idx - 1].green ? (
+                                <text x="0" y="0" fill="#34d399" fontSize="8" fontWeight="black" textAnchor="middle">
+                                  ▲+{pt.green - chartPoints[idx - 1].green}
+                                </text>
+                              ) : pt.green < chartPoints[idx - 1].green ? (
+                                <text x="0" y="0" fill="#f87171" fontSize="8" fontWeight="black" textAnchor="middle">
+                                  ▼{pt.green - chartPoints[idx - 1].green}
+                                </text>
+                              ) : (
+                                <text x="0" y="0" fill="#94a3b8" fontSize="7" fontWeight="bold" textAnchor="middle">
+                                  ━ 0
+                                </text>
+                              )}
+                            </g>
+                          )}
+                        </g>
+                      )}
+
+                      {/* Yellow */}
+                      {visibleLines.yellow && (
+                        <g>
+                          <circle cx={x} cy={getY(pt.yellow)} r={isLast ? 5.5 : 3.5} fill="#f59e0b" stroke="#070a11" strokeWidth="2" />
+                          <text x={x} y={getY(pt.yellow) - 10} fill="#fcd34d" fontSize="8" fontWeight="bold" textAnchor="middle">
+                            {pt.yellow.toLocaleString()}
+                          </text>
+                        </g>
+                      )}
+
+                      {/* Red */}
+                      {visibleLines.red && (
+                        <g>
+                          <circle cx={x} cy={getY(pt.red)} r={isLast ? 5.5 : 3.5} fill="#ef4444" stroke="#070a11" strokeWidth="2" />
+                          <text x={x} y={getY(pt.red) - 10} fill="#fca5a5" fontSize="8" fontWeight="bold" textAnchor="middle">
+                            {pt.red.toLocaleString()}
+                          </text>
+                        </g>
+                      )}
+
+                      {/* X Label */}
+                      <text
+                        x={x}
+                        y={svgHeight - 8}
+                        fill={activePointIndex === idx ? '#38bdf8' : '#94a3b8'}
+                        fontSize="10"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {pt.label}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
+            {/* Selected Point Breakdown Bar in Fullscreen Mode */}
+            {activePointIndex !== null && chartPoints[activePointIndex] && (
+              <div className="mt-4 p-4 rounded-2xl bg-[#0d1527] border border-slate-700 shadow-2xl flex justify-between items-center animate-fadeIn text-sm">
+                <div>
+                  <span className="text-slate-300 font-bold block mb-1">
+                    📌 النقطة المختارة: {chartPoints[activePointIndex].label}
+                  </span>
+                  <div className="flex gap-4 font-black">
+                    <span className="text-emerald-400">💰 الأرباح: {chartPoints[activePointIndex].green.toLocaleString()} أوقية</span>
+                    <span className="text-amber-400">⛽ التشغيل: {chartPoints[activePointIndex].yellow.toLocaleString()} أوقية</span>
+                    <span className="text-rose-400">🛒 الاستهلاك: {chartPoints[activePointIndex].red.toLocaleString()} أوقية</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActivePointIndex(null)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold text-xs"
+                >
+                  إلغاء التحديد ✕
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

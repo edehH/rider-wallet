@@ -7,6 +7,9 @@ export interface Operation {
   amount: number;
   label: string;
   timestamp: string;
+  courseTitle?: string; // اسم أو عنوان المكور / الكورس
+  fromLocation?: string; // من أين / اسم المرسل
+  toLocation?: string; // إلى أين / الوجهة
 }
 
 export interface Objective {
