@@ -51,11 +51,20 @@ export interface AppSettings {
   vaultPin: string;
 }
 
+export interface SavingsPlan {
+  targetAmount: number; // e.g., 100000 or 180000
+  timeframeMonths: number; // e.g., 6 months
+  startDate: string; // ISO Date YYYY-MM-DD
+  title: string; // e.g., "تجميع 100,000 أوقية"
+  dailyIncomeBaseline: number; // e.g. 1500
+}
+
 export interface AppData {
   currentDay: DailyStats;
   vault: VaultEntry[];
   objectives: Objective[];
   settings: AppSettings;
   vacationFund?: VacationFund;
+  savingsPlan?: SavingsPlan;
   lastSettlementDate: string;
 }

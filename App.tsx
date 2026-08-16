@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry, VacationFund } from './types';
+import { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry, VacationFund, SavingsPlan } from './types';
 import { getInitialData, saveData, exportData, getWorkingDate } from './services/storage';
 import { Icons, CURRENCY } from './constants';
 import Keypad from './components/Keypad';
@@ -8,11 +8,12 @@ import TradingDashboard from './components/TradingDashboard';
 import WeeklyAnalytics from './components/WeeklyAnalytics';
 import { VacationFundModal } from './components/VacationFundModal';
 import { VacationRewardScreen } from './components/VacationRewardScreen';
+import { SavingsVaultModal } from './components/SavingsVaultModal';
 
 const App: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
   const [activeInput, setActiveInput] = useState<{ 
-    type: keyof DailyStats | 'pin' | 'goal' | 'monthlyGoal' | 'tempEarnings' | 'editOperation' | 'newObjectiveAmount' | 'payObjective' | 'withdrawVault' | 'editObjectiveAmount', 
+    type: keyof DailyStats | 'pin' | 'goal' | 'monthlyGoal' | 'tempEarnings' | 'editOperation' | 'newObjectiveAmount' | 'payObjective' | 'withdrawVault' | 'depositVault' | 'editObjectiveAmount', 
     title: string,
     operationId?: string,
     objectiveId?: string
@@ -88,6 +89,13 @@ const App: React.FC = () => {
         date: new Date().toISOString().split('T')[0],
         amount: -numValue,
         note: 'سحب يدوي من الخزنة'
+      };
+      newData.vault.push(entry);
+    } else if (activeInput.type === 'depositVault') {
+      const entry: VaultEntry = {
+        date: new Date().toISOString().split('T')[0],
+        amount: numValue,
+        note: 'إيداع ادخار مباشر في الخزنة 💰'
       };
       newData.vault.push(entry);
     } else if (activeInput.type === 'tempEarnings') {
@@ -255,6 +263,13 @@ const App: React.FC = () => {
     saveData(newData);
   };
 
+  const handleUpdateSavingsPlan = (plan: SavingsPlan) => {
+    if (!data) return;
+    const newData = { ...data, savingsPlan: plan };
+    setData(newData);
+    saveData(newData);
+  };
+
   const handleWithdrawVacationExpense = (amount: number) => {
     if (!data) return;
     const newData = { ...data };
@@ -380,6 +395,65 @@ const App: React.FC = () => {
 
         <p className="text-center text-[0.65rem] font-black text-gray-400 mt-3 uppercase tracking-widest">اضغط لتعديل الهدف</p>
       </div>
+
+      {/* 3-Month Wealth Target Quick Bar with Dynamic Days Deduction */}
+      {(() => {
+        const totalSavedVault = Math.max(0, data.vault.reduce((acc, curr) => acc + curr.amount, 0));
+        const targetAmount = data.savingsPlan?.targetAmount || 100000;
+        const remainingMoney = Math.max(0, targetAmount - totalSavedVault);
+        const planDays = (data.savingsPlan?.timeframeMonths || 3) * 30;
+        const dailyQuota = Math.max(1, Math.round(targetAmount / planDays));
+        const daysLeft = Math.max(0, Math.ceil(remainingMoney / dailyQuota));
+        const daysCut = Math.min(planDays, Math.floor(totalSavedVault / dailyQuota));
+
+        const formatQuickDuration = (days: number) => {
+          if (days <= 0) return 'اكتمل الهدف 🏆';
+          const m = Math.floor(days / 30);
+          const d = days % 30;
+          if (m > 0 && d > 0) return `${m} ش و ${d} يوم (${days} يوماً)`;
+          if (m > 0 && d === 0) return `${m} ${m === 1 ? 'شهر' : m === 2 ? 'شهران' : 'أشهر'} (${days} يوماً)`;
+          return `${days} يوم عمل`;
+        };
+
+        return (
+          <div 
+            onClick={() => { setShowVault(true); setVaultUnlocked(false); setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' }); }}
+            className="bg-gradient-to-r from-amber-500/10 via-yellow-500/15 to-emerald-500/10 border-2 border-yellow-400/50 rounded-3xl p-3.5 mb-6 flex justify-between items-center cursor-pointer active:scale-98 transition-all z-10 shadow-xs hover:border-yellow-400"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-yellow-400 text-yellow-950 flex items-center justify-center text-lg font-black shadow-sm shrink-0">
+                🏦
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-black text-amber-900 bg-yellow-300/80 px-2 py-0.5 rounded-md">
+                    {data.savingsPlan?.title || 'خطة تجميع 100,000 أوقية (3 أشهر)'}
+                  </span>
+                  <span className="text-[10px] font-black text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">
+                    ⏳ باقي: {formatQuickDuration(daysLeft)}
+                  </span>
+                </div>
+                <div className="text-xs font-black text-gray-900 mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span>المتبقي:</span>
+                  <span className="text-amber-700 font-black text-sm">
+                    {remainingMoney.toLocaleString()} أوقية
+                  </span>
+                  {daysCut > 0 && (
+                    <span className="text-[10px] text-emerald-700 font-black bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      ⚡ اختصرت {daysCut} يوم
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="text-left shrink-0">
+              <span className="text-xs font-black text-emerald-800 bg-emerald-100/90 px-3 py-1.5 rounded-xl block border border-emerald-200 shadow-2xs">
+                {totalSavedVault.toLocaleString()} مدخر ↗
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Net Balance */}
       <div className="bg-[#1e293b] rounded-[3rem] p-8 text-white mb-6 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10">
@@ -539,96 +613,119 @@ const App: React.FC = () => {
 
       {/* Objectives Modal */}
       {showObjectives && (
-        <div className="fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-6">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-black text-gray-900">الأهداف والديون 🎯</h2>
-            <button onClick={() => setShowObjectives(false)} className="p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6">إغلاق ✕</button>
+        <div className="fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-4 sm:p-6 font-['Cairo',sans-serif] select-none text-right" dir="rtl">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 flex items-center gap-2">
+                <span>الأهداف والادخار المخصص 🎯</span>
+              </h2>
+              <p className="text-xs text-gray-500 font-bold mt-1">تتبع المبالغ المتبقية لكل هدف بدقة وحماس</p>
+            </div>
+            <button onClick={() => setShowObjectives(false)} className="p-2.5 sm:p-3 bg-red-100 hover:bg-red-200 rounded-2xl font-black text-red-700 px-5 text-sm transition-all active:scale-95">
+              إغلاق ✕
+            </button>
           </div>
           
-          <div className="bg-white p-6 rounded-[2rem] border-2 border-dashed border-blue-200 mb-8">
-            <h3 className="font-black mb-4 text-blue-800">إضافة هدف جديد</h3>
+          <div className="bg-white p-5 sm:p-6 rounded-[2rem] border-2 border-dashed border-blue-200 mb-6 shadow-xs">
+            <h3 className="font-black mb-3 text-blue-900 text-sm sm:text-base">إضافة هدف جديد</h3>
             <input 
-              type="text" placeholder="اسم الهدف (مثلاً: شراء خوذة)" value={objectiveTitle} onChange={e => setObjectiveTitle(e.target.value)}
-              className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-gray-100 mb-3 text-right font-bold focus:border-blue-500 outline-none"
+              type="text" 
+              placeholder="اسم الهدف (مثلاً: تجميع 100 ألف، شراء دراجة، رخصة قيادة...)" 
+              value={objectiveTitle} 
+              onChange={e => setObjectiveTitle(e.target.value)}
+              className="w-full p-3.5 bg-gray-50 rounded-2xl border-2 border-gray-100 mb-3 text-right font-bold focus:border-blue-500 focus:bg-white outline-none transition-all text-sm"
             />
-            <button onClick={() => setActiveInput({ type: 'newObjectiveAmount', title: 'المبلغ المطلوب للهدف' })} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-black shadow-lg">تحديد المبلغ وإضافة</button>
+            <button 
+              onClick={() => setActiveInput({ type: 'newObjectiveAmount', title: 'المبلغ المطلوب للهدف' })} 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-2xl font-black shadow-md text-sm transition-all active:scale-95"
+            >
+              تحديد المبلغ المطلوب وإضافة الهدف ✓
+            </button>
           </div>
 
-          <div className="space-y-6 pb-10">
-            {data.objectives.map(obj => (
-              <div key={obj.id} className={`bg-white p-6 rounded-[2rem] border-2 shadow-sm ${obj.isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}>
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h4 className="font-black text-xl text-gray-800">{obj.title} {obj.isCompleted && '✅'}</h4>
-                    <p className="text-sm font-bold text-gray-400">المطلوب: {(obj.targetAmount || 0).toLocaleString()} أوقية</p>
-                  </div>
-                  <div className="flex gap-2">
-                    {!obj.isCompleted && (
-                      <button onClick={() => setActiveInput({ type: 'payObjective', title: `دفع لـ ${obj.title}`, objectiveId: obj.id })} className="bg-green-600 text-white px-5 py-3 rounded-2xl font-black shadow-md text-sm">دفع</button>
-                    )}
-                    <button onClick={() => setActiveInput({ type: 'editObjectiveAmount', title: `تعديل مبلغ ${obj.title}`, objectiveId: obj.id })} className="p-3 bg-blue-50 text-blue-600 rounded-2xl">✎</button>
-                    <button onClick={() => deleteObjective(obj.id)} className="p-3 bg-red-50 text-red-600 rounded-2xl">🗑</button>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-100 h-4 rounded-full overflow-hidden mb-2">
-                  <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${Math.min((obj.paidAmount / obj.targetAmount) * 100, 100)}%` }}></div>
-                </div>
-                <p className="text-left text-xs font-black text-gray-500">تم دفع: {(obj.paidAmount || 0).toLocaleString()} ({Math.round((obj.paidAmount / (obj.targetAmount || 1)) * 100)}%)</p>
+          <div className="space-y-4 pb-10">
+            {data.objectives.length === 0 && (
+              <div className="text-center text-gray-400 py-16 font-bold bg-white rounded-3xl border border-gray-100 p-8">
+                <span className="text-4xl block mb-2">🎯</span>
+                لم تقم بإضافة أي أهداف بعد. أضف أهدافك لتبدأ رؤية المتبقي يومياً!
               </div>
-            ))}
+            )}
+
+            {data.objectives.map(obj => {
+              const remaining = Math.max(0, (obj.targetAmount || 0) - (obj.paidAmount || 0));
+              const pct = Math.min(100, Math.round(((obj.paidAmount || 0) / (obj.targetAmount || 1)) * 100));
+
+              return (
+                <div key={obj.id} className={`bg-white p-5 sm:p-6 rounded-[2rem] border-2 shadow-xs transition-all ${obj.isCompleted ? 'border-emerald-200 bg-emerald-50/50' : 'border-gray-100 hover:border-blue-100'}`}>
+                  <div className="flex justify-between items-start mb-3 gap-2">
+                    <div className="flex-1">
+                      <h4 className="font-black text-lg text-gray-900 flex items-center gap-2">
+                        <span>{obj.title}</span>
+                        {obj.isCompleted && <span className="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-lg">مكتمل 🏆</span>}
+                      </h4>
+                      <p className="text-xs font-bold text-gray-500 mt-0.5">
+                        المطلوب الكلي: {(obj.targetAmount || 0).toLocaleString()} أوقية
+                      </p>
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      {!obj.isCompleted && (
+                        <button 
+                          onClick={() => setActiveInput({ type: 'payObjective', title: `دفع لـ ${obj.title}`, objectiveId: obj.id })} 
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-black shadow-xs text-xs active:scale-95 transition-all"
+                        >
+                          دفع 💰
+                        </button>
+                      )}
+                      <button onClick={() => setActiveInput({ type: 'editObjectiveAmount', title: `تعديل مبلغ ${obj.title}`, objectiveId: obj.id })} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs transition-all" title="تعديل">
+                        ✎
+                      </button>
+                      <button onClick={() => deleteObjective(obj.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs transition-all" title="حذف">
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Motivational Remaining Counter Banner */}
+                  <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200/80 rounded-2xl p-3 mb-3 flex justify-between items-center flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{obj.isCompleted ? '🎉' : '⏳'}</span>
+                      <span className="text-xs font-black text-blue-900">
+                        {obj.isCompleted 
+                          ? 'ألف مبروك! حققت هدفك كاملاً 100%' 
+                          : <>المتبقي لتحقيق الهدف: <span className="text-sm font-black text-indigo-700 underline">{remaining.toLocaleString()} أوقية</span></>
+                        }
+                      </span>
+                    </div>
+                    <span className="text-xs font-black bg-white px-2.5 py-1 rounded-xl text-blue-800 border border-blue-200 shadow-2xs">
+                      تم دفع: {(obj.paidAmount || 0).toLocaleString()} ({pct}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden mb-1 border border-gray-200/70 p-0.5">
+                    <div className="bg-emerald-500 h-full rounded-full transition-all duration-500 shadow-inner" style={{ width: `${pct}%` }}></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Vault (Savings) */}
+      {/* Vault (Savings & Wealth Plan Tracker) */}
       {showVault && vaultUnlocked && (
-        <div className="fixed inset-0 bg-[#F9FAFB] z-[90] overflow-y-auto p-6">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-black text-gray-900">الخزنة 🏦</h2>
-            <button onClick={() => setShowVault(false)} className="p-3 bg-red-100 rounded-2xl font-black text-red-700 px-6">رجوع ✕</button>
-          </div>
-          <div className="bg-yellow-400 border-4 border-yellow-500 rounded-[3rem] p-10 mb-8 shadow-xl text-yellow-950 relative overflow-hidden">
-            <div className="absolute -bottom-10 -right-10 opacity-10 text-[12rem]">🏦</div>
-            <p className="font-black mb-1 text-xl opacity-80 uppercase tracking-widest">إجمالي المدخرات</p>
-            <h3 className="text-6xl font-black tracking-tighter mb-6">
-              {(data.vault.reduce((acc, curr) => acc + curr.amount, 0) || 0).toLocaleString()} <span className="text-xl font-bold">أوقية</span>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button 
-                onClick={() => setActiveInput({ type: 'withdrawVault', title: 'مبلغ السحب من الخزنة' })}
-                className="w-full bg-yellow-950 text-white p-4 rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-all border-b-4 border-yellow-900"
-              >
-                سحب مبلغ 💸
-              </button>
-              <button 
-                onClick={() => {
-                  handleManualSettlement();
-                  alert('تمت تسوية اليوم وتغطية أي عجز أو ترحيل الفائض إلى الخزنة بنجاح!');
-                }}
-                className="w-full bg-yellow-800 text-white p-4 rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-all border-b-4 border-yellow-900"
-              >
-                تسوية وتغطية العجز 🔄
-              </button>
-            </div>
-          </div>
-          <div className="space-y-4 pb-10">
-            <h4 className="font-black text-gray-400 border-b-2 border-gray-100 pb-2 mb-2">سجل الحركات</h4>
-            {data.vault.length === 0 && <div className="text-center text-gray-300 py-10 font-bold">لا توجد حركات</div>}
-            {[...data.vault].reverse().map((entry, idx) => (
-              <div key={idx} className="flex justify-between items-center p-6 bg-white rounded-3xl border-2 border-gray-100 shadow-sm font-black">
-                <div className="flex flex-col">
-                   <span className="text-gray-400 text-xs">{entry.date}</span>
-                   <span className="text-gray-800">
-                     {entry.note || (entry.amount < 0 ? 'تغطية عجز يومي / سحب' : 'ترحيل أرباح يومية')}
-                   </span>
-                </div>
-                <span className={`text-2xl ${entry.amount < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                  {entry.amount < 0 ? '' : '+'}{(entry.amount || 0).toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SavingsVaultModal
+          data={data}
+          onClose={() => setShowVault(false)}
+          onUpdateSavingsPlan={handleUpdateSavingsPlan}
+          onWithdraw={() => setActiveInput({ type: 'withdrawVault', title: 'مبلغ السحب من الخزنة' })}
+          onManualSettlement={() => {
+            handleManualSettlement();
+            alert('تمت تسوية اليوم وتغطية أي عجز أو ترحيل الفائض إلى الخزنة بنجاح!');
+          }}
+          onAddManualDeposit={() => setActiveInput({ type: 'depositVault', title: 'مبلغ الإيداع المباشر في الخزنة' })}
+        />
       )}
 
       {/* Settings */}

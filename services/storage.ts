@@ -79,6 +79,15 @@ export const getInitialData = (): AppData => {
         enabled: true
       };
     }
+    if (!data.savingsPlan || data.savingsPlan.timeframeMonths === 6) {
+      data.savingsPlan = {
+        targetAmount: data.savingsPlan?.targetAmount || 100000,
+        timeframeMonths: 3,
+        startDate: currentWorkingDate,
+        title: `خطة تجميع ${(data.savingsPlan?.targetAmount || 100000).toLocaleString()} أوقية (3 أشهر)`,
+        dailyIncomeBaseline: 1500
+      };
+    }
     return data;
   }
   
@@ -97,6 +106,13 @@ export const getInitialData = (): AppData => {
       restDay: 5, // الجمعة افتراضياً
       spendingBudget: 1500,
       enabled: true
+    },
+    savingsPlan: {
+      targetAmount: 100000,
+      timeframeMonths: 3,
+      startDate: currentWorkingDate,
+      title: 'خطة تجميع 100,000 أوقية (3 أشهر)',
+      dailyIncomeBaseline: 1500
     },
     lastSettlementDate: currentWorkingDate
   };
