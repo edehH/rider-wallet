@@ -396,12 +396,12 @@ const App: React.FC = () => {
         <p className="text-center text-[0.65rem] font-black text-gray-400 mt-3 uppercase tracking-widest">اضغط لتعديل الهدف</p>
       </div>
 
-      {/* 3-Month Wealth Target Quick Bar with Dynamic Days Deduction */}
+      {/* 30-Day Wealth Target Quick Bar with Dynamic Days Deduction */}
       {(() => {
         const totalSavedVault = Math.max(0, data.vault.reduce((acc, curr) => acc + curr.amount, 0));
-        const targetAmount = data.savingsPlan?.targetAmount || 100000;
+        const targetAmount = data.savingsPlan?.targetAmount || 30000;
         const remainingMoney = Math.max(0, targetAmount - totalSavedVault);
-        const planDays = (data.savingsPlan?.timeframeMonths || 3) * 30;
+        const planDays = data.savingsPlan?.timeframeDays || (data.savingsPlan?.timeframeMonths ? data.savingsPlan.timeframeMonths * 30 : 30);
         const dailyQuota = Math.max(1, Math.round(targetAmount / planDays));
         const daysLeft = Math.max(0, Math.ceil(remainingMoney / dailyQuota));
         const daysCut = Math.min(planDays, Math.floor(totalSavedVault / dailyQuota));
@@ -427,7 +427,7 @@ const App: React.FC = () => {
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[10px] font-black text-amber-900 bg-yellow-300/80 px-2 py-0.5 rounded-md">
-                    {data.savingsPlan?.title || 'خطة تجميع 100,000 أوقية (3 أشهر)'}
+                    {data.savingsPlan?.title || 'خطة تجميع 30,000 أوقية (30 يوماً)'}
                   </span>
                   <span className="text-[10px] font-black text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">
                     ⏳ باقي: {formatQuickDuration(daysLeft)}

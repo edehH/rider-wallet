@@ -79,12 +79,13 @@ export const getInitialData = (): AppData => {
         enabled: true
       };
     }
-    if (!data.savingsPlan || data.savingsPlan.timeframeMonths === 6) {
+    if (!data.savingsPlan || data.savingsPlan.timeframeMonths === 6 || data.savingsPlan.timeframeMonths === 3) {
       data.savingsPlan = {
-        targetAmount: data.savingsPlan?.targetAmount || 100000,
-        timeframeMonths: 3,
+        targetAmount: 30000,
+        timeframeMonths: 1,
+        timeframeDays: 30,
         startDate: currentWorkingDate,
-        title: `خطة تجميع ${(data.savingsPlan?.targetAmount || 100000).toLocaleString()} أوقية (3 أشهر)`,
+        title: 'خطة تجميع 30,000 أوقية (30 يوماً)',
         dailyIncomeBaseline: 1500
       };
     }
@@ -108,10 +109,11 @@ export const getInitialData = (): AppData => {
       enabled: true
     },
     savingsPlan: {
-      targetAmount: 100000,
-      timeframeMonths: 3,
+      targetAmount: 30000,
+      timeframeMonths: 1,
+      timeframeDays: 30,
       startDate: currentWorkingDate,
-      title: 'خطة تجميع 100,000 أوقية (3 أشهر)',
+      title: 'خطة تجميع 30,000 أوقية (30 يوماً)',
       dailyIncomeBaseline: 1500
     },
     lastSettlementDate: currentWorkingDate
