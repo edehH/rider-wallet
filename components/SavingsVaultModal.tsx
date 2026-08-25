@@ -12,34 +12,31 @@ interface SavingsVaultModalProps {
 
 const PRESET_PLANS = [
   {
-    targetAmount: 30000,
-    timeframeMonths: 1,
-    timeframeDays: 30,
-    title: 'خطة الـ 30,000 أوقية (30 يوماً)',
+    targetAmount: 100000,
+    timeframeMonths: 3,
+    title: 'خطة الـ 100,000 أوقية (3 أشهر - 90 يوماً)',
     dailyIncomeBaseline: 1500,
-    dailySavingsNeeded: 1000,
+    dailySavingsNeeded: 1111,
     icon: '🎯',
-    badge: 'الهدف الأساسي (30 يوماً)',
+    badge: 'الهدف السريع للشباب',
+  },
+  {
+    targetAmount: 180000,
+    timeframeMonths: 3,
+    title: 'خطة الـ 180,000 أوقية (3 أشهر - 90 يوماً)',
+    dailyIncomeBaseline: 1500,
+    dailySavingsNeeded: 2000,
+    icon: '🚀',
+    badge: 'الهدف الذهبي المكثف',
   },
   {
     targetAmount: 50000,
-    timeframeMonths: 1,
-    timeframeDays: 30,
-    title: 'خطة الـ 50,000 أوقية (30 يوماً)',
-    dailyIncomeBaseline: 1500,
-    dailySavingsNeeded: 1667,
-    icon: '🚀',
-    badge: 'هدف مكثف سريع',
-  },
-  {
-    targetAmount: 100000,
     timeframeMonths: 3,
-    timeframeDays: 90,
-    title: 'خطة الـ 100,000 أوقية (3 أشهر)',
+    title: 'خطة الـ 50,000 أوقية (3 أشهر)',
     dailyIncomeBaseline: 1500,
-    dailySavingsNeeded: 1111,
+    dailySavingsNeeded: 556,
     icon: '⚡',
-    badge: 'هدف الـ 3 أشهر',
+    badge: 'هدف انطلاقة ميسرة',
   },
 ];
 
@@ -52,11 +49,10 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
   onAddManualDeposit,
 }) => {
   const currentPlan: SavingsPlan = data.savingsPlan || {
-    targetAmount: 30000,
-    timeframeMonths: 1,
-    timeframeDays: 30,
+    targetAmount: 100000,
+    timeframeMonths: 3,
     startDate: data.currentDay.date,
-    title: 'خطة تجميع 30,000 أوقية (30 يوماً)',
+    title: 'خطة تجميع 100,000 أوقية (3 أشهر)',
     dailyIncomeBaseline: 1500,
   };
 
@@ -66,17 +62,22 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
 
   // Calculations
   const totalSavedInVault = data.vault.reduce((acc, curr) => acc + curr.amount, 0);
-  const totalSaved = Math.max(0, totalSavedInVault);
-  const target = currentPlan.targetAmount || 30000;
+  const currentDayNet = data.currentDay.earnings - (data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0));
+  const settledToday = data.currentDay.settledAmount || 0;
+  const unsettledLive = Math.max(0, currentDayNet - settledToday);
+
+  // Total saved includes confirmed vault + live un-settled surplus
+  const totalSaved = Math.max(0, totalSavedInVault + unsettledLive);
+  const target = currentPlan.targetAmount || 100000;
   const remaining = Math.max(0, target - totalSaved);
   const progressPct = Math.min(100, Math.max(0, (totalSaved / target) * 100));
 
-  const totalDays = currentPlan.timeframeDays || (currentPlan.timeframeMonths ? currentPlan.timeframeMonths * 30 : 30);
+  const totalDays = (currentPlan.timeframeMonths || 3) * 30;
   const dailyNeeded = Math.max(1, Math.round(target / totalDays));
   const dailyIncome = currentPlan.dailyIncomeBaseline || 1500;
   const dailySavingsRatio = Math.round((dailyNeeded / dailyIncome) * 100);
 
-  // Performance-based Days & Months Countdown (shorter horizon as user saves more)
+  // Performance-based Days & Months Countdown (Shortened directly as user saves more)
   const daysCompleted = Math.min(totalDays, Math.floor(totalSaved / dailyNeeded));
   const daysRemaining = Math.max(0, Math.ceil(remaining / dailyNeeded));
 
@@ -101,7 +102,7 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
     if (totalSaved >= target) {
       return {
         title: '🎉 ألف مبروك يا بطل! تم تحقيق الهدف بالكامل!',
-        desc: `لقد جمعت ${totalSaved.toLocaleString()} أوقية بنجاح واقتدار خلال ${totalDays} يوماً فقط. طريقك مفتوح نحو إنجازات أكبر!`,
+        desc: `لقد جمعت ${totalSaved.toLocaleString()} أوقية بنجاح واقتدار في مقتبل شبابك خلال 3 أشهر فقط. طريقك مفتوح نحو إنجازات أعظم!`,
         color: 'from-emerald-500 to-teal-700',
         textColor: 'text-emerald-950',
       };
@@ -131,8 +132,8 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
       };
     }
     return {
-      title: '🌱 خطة الـ 30 يوماً السريعة لمقتبل العمر',
-      desc: `خلال 30 يوماً فقط، ادخار ${dailyNeeded.toLocaleString()} أوقية يومياً يوصلك لـ ${target.toLocaleString()} أوقية كاملة في مهلة شهر واحد!`,
+      title: '🌱 خطة الشهور الثلاثة السريعة لمقتبل العمر',
+      desc: `خلال 3 أشهر (90 يوماً فقط)، ادخار ${dailyNeeded.toLocaleString()} أوقية يومياً يوصلك لـ ${target.toLocaleString()} أوقية كاملة في نصف المدة!`,
       color: 'from-yellow-400 to-amber-500',
       textColor: 'text-yellow-950',
     };
@@ -213,9 +214,16 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
                 {totalSaved.toLocaleString()} <span className="text-xs font-bold text-gray-300">أوقية</span>
               </div>
             </div>
-            <span className="text-[11px] font-bold text-emerald-300/80 mt-2 block">
-              تم إنجاز {progressPct.toFixed(1)}% من الهدف
-            </span>
+            <div className="mt-2 flex flex-col gap-0.5">
+              <span className="text-[11px] font-bold text-emerald-300/80">
+                تم إنجاز {progressPct.toFixed(1)}% من الهدف
+              </span>
+              {unsettledLive > 0 && (
+                <span className="text-[10px] text-amber-300 font-black">
+                  (يشمل {unsettledLive.toLocaleString()} أوقية صافي اليوم قبل الترحيل)
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Box 2: EXACT REMAINING MONEY (المبلغ المتبقي لتحقيق الهدف) */}
@@ -331,7 +339,7 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
       <div className="bg-white p-5 sm:p-6 rounded-[2rem] border-2 border-gray-100 shadow-sm mb-6">
         <div className="flex justify-between items-center mb-3">
           <h3 className="font-black text-gray-900 text-base sm:text-lg flex items-center gap-2">
-            <span>اختر خطة تجميع رأس المال (مهلة 30 يوماً / شهر) ⚡</span>
+            <span>اختر خطة تجميع رأس المال (3 أشهر - 90 يوماً) ⚡</span>
           </h3>
           <button
             onClick={() => setIsEditingCustomTarget(!isEditingCustomTarget)}
@@ -352,7 +360,6 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
                   onUpdateSavingsPlan({
                     targetAmount: plan.targetAmount,
                     timeframeMonths: plan.timeframeMonths,
-                    timeframeDays: plan.timeframeDays,
                     startDate: data.currentDay.date,
                     title: plan.title,
                     dailyIncomeBaseline: plan.dailyIncomeBaseline,
@@ -375,9 +382,7 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
                   <div className="text-lg font-black text-gray-900">
                     {plan.targetAmount.toLocaleString()} <span className="text-xs font-bold text-gray-500">أوقية</span>
                   </div>
-                  <div className="text-xs font-bold text-gray-500 mt-0.5">
-                    المهلة: {plan.timeframeDays ? `${plan.timeframeDays} يوماً` : `${plan.timeframeMonths} أشهر`}
-                  </div>
+                  <div className="text-xs font-bold text-gray-500 mt-0.5">خلال {plan.timeframeMonths} أشهر</div>
                 </div>
 
                 <div className="mt-3 pt-2 border-t border-gray-200/70 text-[11px] font-bold text-slate-600 flex justify-between">
@@ -437,7 +442,7 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
           onClick={onManualSettlement}
           className="bg-yellow-800 hover:bg-yellow-900 text-white p-4 rounded-2xl font-black text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 border-b-4 border-yellow-900"
         >
-          <span>تسوية وترحيل الأرباح 🔄</span>
+          <span>{unsettledLive > 0 ? `ترحيل أرباح اليوم (${unsettledLive.toLocaleString()} أوقية) 🔄` : 'تسوية وترحيل الأرباح 🔄'}</span>
         </button>
         <button
           onClick={onAddManualDeposit}

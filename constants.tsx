@@ -2,7 +2,7 @@
 import React from 'react';
 
 export const CURRENCY = "أوقية";
-export const INITIAL_PIN = "5492";
+export const INITIAL_PIN = "5672";
 
 export const Icons = {
   Settings: () => (

@@ -1,5 +1,5 @@
 
-import { AppData, DailyStats } from '../types';
+import { AppData, DailyStats, VaultEntry } from '../types';
 import { INITIAL_PIN } from '../constants';
 
 const STORAGE_KEY = 'mr_rider_wallet_data_v3';
@@ -17,6 +17,64 @@ export const getWorkingDate = (date = new Date()): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Consolidates vault movements so that each date has strictly ONE unified record entry
+export const consolidateVaultEntries = (vault: VaultEntry[]): VaultEntry[] => {
+  if (!vault || vault.length === 0) return [];
+  const dateMap = new Map<string, { amount: number; note?: string }>();
+  const order: string[] = [];
+
+  for (const entry of vault) {
+    if (!dateMap.has(entry.date)) {
+      dateMap.set(entry.date, { amount: entry.amount, note: entry.note });
+      order.push(entry.date);
+    } else {
+      const current = dateMap.get(entry.date)!;
+      const newAmount = current.amount + entry.amount;
+      dateMap.set(entry.date, {
+        amount: newAmount,
+        note: newAmount >= 0 ? 'ترحيل وصافي أرباح اليوم' : 'صافي عجز اليوم (مصاريف/مشتريات)'
+      });
+    }
+  }
+
+  return order.map(date => {
+    const item = dateMap.get(date)!;
+    return {
+      date,
+      amount: item.amount,
+      note: item.note || (item.amount >= 0 ? 'ترحيل وصافي أرباح اليوم' : 'صافي عجز اليوم (مصاريف/مشتريات)')
+    };
+  });
+};
+
+// Adds or merges an amount into the unified daily vault entry for a given date
+export const addOrUpdateVaultEntry = (
+  vault: VaultEntry[],
+  date: string,
+  amount: number,
+  customNote?: string
+): VaultEntry[] => {
+  const consolidated = consolidateVaultEntries(vault || []);
+  const existingIndex = consolidated.findIndex(e => e.date === date);
+
+  if (existingIndex > -1) {
+    const updatedAmount = consolidated[existingIndex].amount + amount;
+    consolidated[existingIndex] = {
+      date,
+      amount: updatedAmount,
+      note: customNote || (updatedAmount >= 0 ? 'ترحيل وصافي أرباح اليوم' : 'صافي عجز اليوم (مصاريف/مشتريات)')
+    };
+  } else {
+    consolidated.push({
+      date,
+      amount,
+      note: customNote || (amount < 0 ? 'تغطية عجز يومي (مشتريات/مصاريف)' : 'ترحيل أرباح يومية')
+    });
+  }
+
+  return consolidated;
+};
+
 const createNewDay = (goal: number = 1000, customDate?: string): DailyStats => ({
   date: customDate || getWorkingDate(),
   earnings: 0,
@@ -25,7 +83,8 @@ const createNewDay = (goal: number = 1000, customDate?: string): DailyStats => (
   purchases: 0,
   objectivePayments: 0,
   goal: goal || 1000,
-  operations: []
+  operations: [],
+  settledAmount: 0
 });
 
 export const getInitialData = (): AppData => {
@@ -37,19 +96,22 @@ export const getInitialData = (): AppData => {
 
     // Trigger automatic transfer into vault at 6:00 AM when working date changes
     if (data.currentDay.date !== currentWorkingDate) {
-       // Automatic Settlement at 6 AM boundary
-       const net = data.currentDay.earnings - (
+       // Automatic Settlement at 6 AM boundary of remaining unsettled net
+       const totalDeductions = (
          data.currentDay.ownerShare + 
          data.currentDay.fuel + 
          data.currentDay.purchases + 
          (data.currentDay.objectivePayments || 0)
        );
-       if (net !== 0) {
-         data.vault.push({ 
-           date: data.currentDay.date, 
-           amount: net,
-           note: net < 0 ? 'تغطية عجز يومي (مشتريات/مصاريف)' : 'ترحيل أرباح يومية'
-         });
+       const net = data.currentDay.earnings - totalDeductions;
+       const unsettledNet = net - (data.currentDay.settledAmount || 0);
+
+       if (unsettledNet !== 0) {
+         data.vault = addOrUpdateVaultEntry(
+           data.vault,
+           data.currentDay.date,
+           unsettledNet
+         );
        }
        
        const activeGoal = data.settings.dailyGoal === 500 ? 1000 : (data.settings.dailyGoal || 1000);
@@ -66,9 +128,17 @@ export const getInitialData = (): AppData => {
        saveData(data);
     }
 
+    // Always ensure vault history is cleanly consolidated per day
+    if (data.vault && data.vault.length > 0) {
+      data.vault = consolidateVaultEntries(data.vault);
+    }
+
     // Migration: Ensure objectives, operations, monthlyGoal and vacationFund exist
     if (!data.objectives) data.objectives = [];
     if (!data.currentDay.operations) data.currentDay.operations = [];
+    if (!data.settings.vaultPin || data.settings.vaultPin === '5492') {
+      data.settings.vaultPin = INITIAL_PIN;
+    }
     if (!data.settings.monthlyGoal) data.settings.monthlyGoal = 30000;
     if (!data.vacationFund) {
       data.vacationFund = {
@@ -79,13 +149,12 @@ export const getInitialData = (): AppData => {
         enabled: true
       };
     }
-    if (!data.savingsPlan || data.savingsPlan.timeframeMonths === 6 || data.savingsPlan.timeframeMonths === 3) {
+    if (!data.savingsPlan || data.savingsPlan.timeframeMonths === 6) {
       data.savingsPlan = {
-        targetAmount: 30000,
-        timeframeMonths: 1,
-        timeframeDays: 30,
+        targetAmount: data.savingsPlan?.targetAmount || 100000,
+        timeframeMonths: 3,
         startDate: currentWorkingDate,
-        title: 'خطة تجميع 30,000 أوقية (30 يوماً)',
+        title: `خطة تجميع ${(data.savingsPlan?.targetAmount || 100000).toLocaleString()} أوقية (3 أشهر)`,
         dailyIncomeBaseline: 1500
       };
     }
@@ -109,11 +178,10 @@ export const getInitialData = (): AppData => {
       enabled: true
     },
     savingsPlan: {
-      targetAmount: 30000,
-      timeframeMonths: 1,
-      timeframeDays: 30,
+      targetAmount: 100000,
+      timeframeMonths: 3,
       startDate: currentWorkingDate,
-      title: 'خطة تجميع 30,000 أوقية (30 يوماً)',
+      title: 'خطة تجميع 100,000 أوقية (3 أشهر)',
       dailyIncomeBaseline: 1500
     },
     lastSettlementDate: currentWorkingDate

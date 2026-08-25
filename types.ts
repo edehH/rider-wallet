@@ -29,6 +29,7 @@ export interface DailyStats {
   objectivePayments: number;
   goal: number;
   operations: Operation[];
+  settledAmount?: number; // المبلغ الذي تم ترحيله مسبقاً للخزنة خلال اليوم
 }
 
 export interface VaultEntry {
@@ -52,11 +53,10 @@ export interface AppSettings {
 }
 
 export interface SavingsPlan {
-  targetAmount: number; // e.g., 30000
-  timeframeMonths: number; // e.g., 1 (30 days)
-  timeframeDays?: number; // e.g., 30
+  targetAmount: number; // e.g., 100000 or 180000
+  timeframeMonths: number; // e.g., 6 months
   startDate: string; // ISO Date YYYY-MM-DD
-  title: string; // e.g., "تجميع 30,000 أوقية"
+  title: string; // e.g., "تجميع 100,000 أوقية"
   dailyIncomeBaseline: number; // e.g. 1500
 }
 

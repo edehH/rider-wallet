@@ -108,13 +108,14 @@ const Keypad: React.FC<KeypadProps> = ({
 
       {/* Amount Display */}
       <div className="text-center mb-4">
-        <div className="text-4xl sm:text-5xl font-black text-blue-700 bg-blue-50 py-3 sm:py-4 rounded-2xl tracking-tighter shadow-inner">
-          {value || '0'} <span className="text-sm font-bold text-blue-400">أوقية</span>
+        <div className="text-4xl sm:text-5xl font-black text-blue-700 bg-blue-50 py-3 sm:py-4 rounded-2xl tracking-tighter shadow-inner flex items-center justify-center gap-2" dir="ltr">
+          <span className="font-mono">{value || '0'}</span>
+          <span className="text-sm font-bold text-blue-400 font-sans" dir="rtl">أوقية</span>
         </div>
       </div>
 
-      {/* Numerical Keypad Grid */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+      {/* Numerical Keypad Grid (Standard LTR: 1 top-left, 3 top-right, Delete bottom-left, Confirm bottom-right) */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4" dir="ltr">
         {keys.map((key) => (
           <button
             key={key}
@@ -127,14 +128,14 @@ const Keypad: React.FC<KeypadProps> = ({
               h-16 sm:h-20 flex items-center justify-center text-2xl sm:text-3xl font-black rounded-2xl active:scale-95 transition-all
               ${
                 key === 'C'
-                  ? 'bg-orange-100 text-orange-600 border-b-4 border-orange-200'
+                  ? 'bg-rose-100 hover:bg-rose-200 text-rose-700 border-b-4 border-rose-300 shadow-xs'
                   : key === '✓'
-                  ? 'bg-green-600 text-white border-b-4 border-green-800 shadow-lg shadow-green-600/30'
-                  : 'bg-gray-100 text-gray-900 border-b-4 border-gray-300'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-b-4 border-emerald-800 shadow-lg shadow-emerald-600/30'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-b-4 border-gray-300 shadow-xs'
               }
             `}
           >
-            {key}
+            {key === 'C' ? '⌫' : key}
           </button>
         ))}
       </div>

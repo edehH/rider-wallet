@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppData, DailyStats, Operation, Objective, OperationType, VaultEntry, VacationFund, SavingsPlan } from './types';
-import { getInitialData, saveData, exportData, getWorkingDate } from './services/storage';
+import { getInitialData, saveData, exportData, getWorkingDate, addOrUpdateVaultEntry } from './services/storage';
 import { Icons, CURRENCY } from './constants';
 import Keypad from './components/Keypad';
 import TradingDashboard from './components/TradingDashboard';
@@ -85,19 +85,21 @@ const App: React.FC = () => {
     } else if (activeInput.type === 'monthlyGoal') {
       newData.settings.monthlyGoal = numValue;
     } else if (activeInput.type === 'withdrawVault') {
-      const entry: VaultEntry = {
-        date: new Date().toISOString().split('T')[0],
-        amount: -numValue,
-        note: 'سحب يدوي من الخزنة'
-      };
-      newData.vault.push(entry);
+      const todayDate = newData.currentDay.date || getWorkingDate();
+      newData.vault = addOrUpdateVaultEntry(
+        newData.vault,
+        todayDate,
+        -numValue,
+        'سحب يدوي من الخزنة'
+      );
     } else if (activeInput.type === 'depositVault') {
-      const entry: VaultEntry = {
-        date: new Date().toISOString().split('T')[0],
-        amount: numValue,
-        note: 'إيداع ادخار مباشر في الخزنة 💰'
-      };
-      newData.vault.push(entry);
+      const todayDate = newData.currentDay.date || getWorkingDate();
+      newData.vault = addOrUpdateVaultEntry(
+        newData.vault,
+        todayDate,
+        numValue,
+        'إيداع ادخار مباشر في الخزنة 💰'
+      );
     } else if (activeInput.type === 'tempEarnings') {
       setTempEarningsValue(numValue);
       setInputValue('');
@@ -220,38 +222,31 @@ const App: React.FC = () => {
     if (!data) return;
     const totalDeductions = data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0);
     const net = data.currentDay.earnings - totalDeductions;
+    const unsettledNet = net - (data.currentDay.settledAmount || 0);
     const newData = { ...data };
     
-    if (net !== 0) {
-      newData.vault.push({
-        date: newData.currentDay.date,
-        amount: net,
-        note: net < 0 ? 'تغطية عجز يومي (مشتريات/مصاريف)' : 'ترحيل أرباح يومية'
-      });
+    if (unsettledNet !== 0) {
+      const todayDate = newData.currentDay.date || getWorkingDate();
+      newData.vault = addOrUpdateVaultEntry(
+        newData.vault,
+        todayDate,
+        unsettledNet
+      );
       
       // Transfer surplus into vacation fund if not completed yet
-      if (net > 0 && newData.vacationFund && newData.vacationFund.enabled) {
+      if (unsettledNet > 0 && newData.vacationFund && newData.vacationFund.enabled) {
         if (newData.vacationFund.savedAmount < newData.vacationFund.targetAmount) {
           const needed = newData.vacationFund.targetAmount - newData.vacationFund.savedAmount;
-          const contribution = Math.min(net, needed);
+          const contribution = Math.min(unsettledNet, needed);
           newData.vacationFund.savedAmount += contribution;
         }
       }
+
+      // Record settled amount for the current day
+      newData.currentDay.settledAmount = (newData.currentDay.settledAmount || 0) + unsettledNet;
     }
     
-    const currentWorkingDate = getWorkingDate();
-    const activeGoal = newData.settings.dailyGoal || 1000;
-    newData.currentDay = {
-      date: currentWorkingDate,
-      earnings: 0,
-      ownerShare: 0,
-      fuel: 0,
-      purchases: 0,
-      objectivePayments: 0,
-      goal: activeGoal,
-      operations: []
-    };
-    newData.lastSettlementDate = currentWorkingDate;
+    newData.lastSettlementDate = getWorkingDate();
     setData(newData);
     saveData(newData);
   };
@@ -277,11 +272,13 @@ const App: React.FC = () => {
     if (newData.vacationFund) {
       newData.vacationFund.savedAmount = Math.max(0, currentSaved - amount);
     }
-    newData.vault.push({
-      date: new Date().toISOString().split('T')[0],
-      amount: -amount,
-      note: 'سحب مصروف العطلة والراحة 🏖️'
-    });
+    const todayDate = newData.currentDay.date || getWorkingDate();
+    newData.vault = addOrUpdateVaultEntry(
+      newData.vault,
+      todayDate,
+      -amount,
+      'سحب مصروف العطلة والراحة 🏖️'
+    );
     setData(newData);
     saveData(newData);
   };
@@ -300,7 +297,9 @@ const App: React.FC = () => {
 
   const totalDeductions = data.currentDay.ownerShare + data.currentDay.fuel + data.currentDay.purchases + (data.currentDay.objectivePayments || 0);
   const netBalance = data.currentDay.earnings - totalDeductions;
-  const progress = Math.min((netBalance / data.currentDay.goal) * 100, 100);
+  const settledToday = data.currentDay.settledAmount || 0;
+  const unsettledBalance = netBalance - settledToday;
+  const progress = Math.min((Math.max(0, netBalance) / (data.currentDay.goal || 1000)) * 100, 100);
 
   // Time Progression (06:00 to 22:00)
   const now = new Date();
@@ -313,12 +312,15 @@ const App: React.FC = () => {
   const currentDayOfMonth = now.getDate() + now.getHours() / 24;
   const monthTimeProgress = Math.min((currentDayOfMonth / daysInMonth) * 100, 100);
   
-  // Monthly Achievement Progress
-  const currentMonthStr = now.toISOString().slice(0, 7);
-  const monthlyEarnings = data.vault
+  // Monthly Achievement Progress (شامل جميع ما تم ادخاره وترحيله للخزنة + الفائض المباشر الجديد لليوم)
+  const currentWorkingDateStr = data.currentDay.date || now.toISOString().slice(0, 10);
+  const currentMonthStr = currentWorkingDateStr.slice(0, 7);
+  const totalVaultMonth = data.vault
     .filter(entry => entry.date.startsWith(currentMonthStr))
     .reduce((acc, curr) => acc + curr.amount, 0);
-  const monthAchievementProgress = Math.min((monthlyEarnings / (data.settings.monthlyGoal || 15000)) * 100, 100);
+  const unsettledLiveSurplus = Math.max(0, unsettledBalance);
+  const monthlyEarnings = Math.max(0, totalVaultMonth + unsettledLiveSurplus);
+  const monthAchievementProgress = Math.min((monthlyEarnings / (data.settings.monthlyGoal || 30000)) * 100, 100);
 
   // Dynamic progress color generator (Red 0% -> Green 100%)
   const getProgressColor = (pct: number) => {
@@ -396,15 +398,15 @@ const App: React.FC = () => {
         <p className="text-center text-[0.65rem] font-black text-gray-400 mt-3 uppercase tracking-widest">اضغط لتعديل الهدف</p>
       </div>
 
-      {/* 30-Day Wealth Target Quick Bar with Dynamic Days Deduction */}
+      {/* 3-Month Wealth Target Quick Bar with Dynamic Days Deduction */}
       {(() => {
-        const totalSavedVault = Math.max(0, data.vault.reduce((acc, curr) => acc + curr.amount, 0));
-        const targetAmount = data.savingsPlan?.targetAmount || 30000;
+        const totalSavedVault = Math.max(0, data.vault.reduce((acc, curr) => acc + curr.amount, 0) + Math.max(0, unsettledBalance));
+        const targetAmount = data.savingsPlan?.targetAmount || 100000;
         const remainingMoney = Math.max(0, targetAmount - totalSavedVault);
-        const planDays = data.savingsPlan?.timeframeDays || (data.savingsPlan?.timeframeMonths ? data.savingsPlan.timeframeMonths * 30 : 30);
+        const planDays = (data.savingsPlan?.timeframeMonths || 3) * 30;
         const dailyQuota = Math.max(1, Math.round(targetAmount / planDays));
         const daysLeft = Math.max(0, Math.ceil(remainingMoney / dailyQuota));
-        const daysCut = Math.min(planDays, Math.floor(totalSavedVault / dailyQuota));
+        const daysShortened = Math.min(planDays, Math.floor(totalSavedVault / dailyQuota));
 
         const formatQuickDuration = (days: number) => {
           if (days <= 0) return 'اكتمل الهدف 🏆';
@@ -427,7 +429,7 @@ const App: React.FC = () => {
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[10px] font-black text-amber-900 bg-yellow-300/80 px-2 py-0.5 rounded-md">
-                    {data.savingsPlan?.title || 'خطة تجميع 30,000 أوقية (30 يوماً)'}
+                    {data.savingsPlan?.title || 'خطة تجميع 100,000 أوقية (3 أشهر)'}
                   </span>
                   <span className="text-[10px] font-black text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">
                     ⏳ باقي: {formatQuickDuration(daysLeft)}
@@ -438,9 +440,9 @@ const App: React.FC = () => {
                   <span className="text-amber-700 font-black text-sm">
                     {remainingMoney.toLocaleString()} أوقية
                   </span>
-                  {daysCut > 0 && (
+                  {daysShortened > 0 && (
                     <span className="text-[10px] text-emerald-700 font-black bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      ⚡ اختصرت {daysCut} يوم
+                      ⚡ اختصرت {daysShortened} يوم
                     </span>
                   )}
                 </div>
@@ -456,11 +458,25 @@ const App: React.FC = () => {
       })()}
 
       {/* Net Balance */}
-      <div className="bg-[#1e293b] rounded-[3rem] p-8 text-white mb-6 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10">
-        <p className="text-blue-300 font-black mb-1 text-lg uppercase tracking-tight opacity-80">الصافي المتبقي لك</p>
-        <h2 className="text-6xl font-black tracking-tighter flex items-baseline gap-2">
+      <div className="bg-[#1e293b] rounded-[3rem] p-7 text-white mb-6 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10">
+        <div className="flex justify-between items-center mb-1">
+          <p className="text-blue-300 font-black text-sm uppercase tracking-tight opacity-90">
+            {settledToday > 0 ? 'صافي اليوم التراكمي' : 'الصافي المتبقي لك'}
+          </p>
+          {settledToday > 0 && (
+            <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-xl">
+              ✓ تم ترحيل {settledToday.toLocaleString()} للخزنة
+            </span>
+          )}
+        </div>
+        <h2 className="text-5xl sm:text-6xl font-black tracking-tighter flex items-baseline gap-2">
           {(netBalance || 0).toLocaleString()} <span className="text-xl font-bold opacity-40">أوقية</span>
         </h2>
+        {settledToday > 0 && unsettledBalance > 0 && (
+          <p className="text-xs font-bold text-amber-300 mt-2">
+            ⚡ فائض جديد جاهز للترحيل: {unsettledBalance.toLocaleString()} أوقية
+          </p>
+        )}
       </div>
 
       {/* Quick Access Analytics Banners */}
@@ -522,7 +538,7 @@ const App: React.FC = () => {
               title={activeInput.title}
               value={inputValue}
               onInput={(v) => setInputValue(prev => prev + v)}
-              onClear={() => setInputValue('')}
+              onClear={() => setInputValue(prev => prev.slice(0, -1))}
               onConfirm={handleUpdateValue}
               onCancel={handleCancel}
               isCourseInput={activeInput.type === 'tempEarnings'}
