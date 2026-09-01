@@ -10,6 +10,8 @@ export interface Operation {
   courseTitle?: string; // اسم أو عنوان المكور / الكورس
   fromLocation?: string; // من أين / اسم المرسل
   toLocation?: string; // إلى أين / الوجهة
+  isPaid?: boolean; // حالة الدفع: true = تم الدفع، false = غير مدفوع / مؤجل
+  paidTimestamp?: string;
 }
 
 export interface Objective {
@@ -50,6 +52,16 @@ export interface AppSettings {
   dailyGoal: number;
   monthlyGoal: number;
   vaultPin: string;
+  workHoursStart?: number; // e.g. 8 for 8:00 AM
+  workHoursEnd?: number; // e.g. 24 for 12:00 midnight
+  inactivityAlertEnabled?: boolean;
+  inactivityIntervalMinutes?: number; // default 60 minutes
+  soundEnabled?: boolean;
+  muteDuringSleepHours?: boolean; // كتم صوت الإشعارات أثناء ساعات النوم
+  muteInteractionSounds?: boolean; // كتم أصوات التفاعل والأزرار
+  sleepHoursStart?: number; // e.g. 0 for 12:00 midnight
+  sleepHoursEnd?: number; // e.g. 8 for 8:00 AM
+  notificationsPermissionRequested?: boolean;
 }
 
 export interface SavingsPlan {
@@ -60,6 +72,32 @@ export interface SavingsPlan {
   dailyIncomeBaseline: number; // e.g. 1500
 }
 
+export interface MysteryCard {
+  id: string;
+  milestone: number;
+  title: string;
+  quote: string;
+  icon: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  perkTitle: string;
+  perkDesc: string;
+  unlockedAt: string;
+}
+
+export interface GamificationState {
+  streakDays: number;
+  lastStreakDate: string;
+  totalXp: number;
+  openedChests: number[]; // station numbers e.g. [1, 2]
+  celebratedMilestones: number[]; // e.g. [10000, 20000]
+  charityFund: number; // صندوق الصدقة والانضباط المالي المتراكم (150، 300، 450...)
+  lastPenaltyTimestamp?: number; // آخر وقت تم فيه خصم عقوبة التأخير الصامتة
+  unlockedTitles: string[];
+  selectedTitle: string;
+  strictCommitmentEnabled: boolean;
+  mysteryInventory: MysteryCard[];
+}
+
 export interface AppData {
   currentDay: DailyStats;
   vault: VaultEntry[];
@@ -67,5 +105,7 @@ export interface AppData {
   settings: AppSettings;
   vacationFund?: VacationFund;
   savingsPlan?: SavingsPlan;
+  gamification?: GamificationState;
   lastSettlementDate: string;
+  lastEarningTimestamp?: number; // timestamp ms of last recorded earning
 }

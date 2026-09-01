@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { playKeypadBeep, playUndoSound } from '../services/soundEffects';
 
 interface KeypadProps {
   onInput: (val: string) => void;
@@ -16,6 +17,8 @@ interface KeypadProps {
   toLocation?: string;
   setToLocation?: (val: string) => void;
   isDuplicateCourse?: boolean;
+  isPaid?: boolean;
+  setIsPaid?: (val: boolean) => void;
 }
 
 const Keypad: React.FC<KeypadProps> = ({
@@ -33,14 +36,32 @@ const Keypad: React.FC<KeypadProps> = ({
   toLocation = '',
   setToLocation,
   isDuplicateCourse = false,
+  isPaid = false,
+  setIsPaid,
 }) => {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '✓'];
+
+  const handleKeyClick = (key: string) => {
+    playKeypadBeep(key);
+    if (key === 'C') {
+      onClear();
+    } else if (key === '✓') {
+      onConfirm();
+    } else {
+      onInput(key);
+    }
+  };
+
+  const handleCancelClick = () => {
+    playUndoSound();
+    onCancel();
+  };
 
   return (
     <div className="bg-white p-5 sm:p-6 rounded-t-[2.5rem] shadow-2xl fixed bottom-0 left-0 right-0 z-50 border-t-8 border-gray-100 max-h-[92vh] overflow-y-auto font-['Cairo',sans-serif]">
       <div className="flex justify-between items-center mb-3 px-2">
         <button
-          onClick={onCancel}
+          onClick={handleCancelClick}
           className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-1.5 rounded-xl font-bold text-sm active:scale-95 transition-all"
         >
           إلغاء ✕
@@ -103,6 +124,29 @@ const Keypad: React.FC<KeypadProps> = ({
               />
             </div>
           </div>
+
+          {/* Payment Status (Default: Unpaid, with 1-click toggle for pre-paid deliveries) */}
+          <div className="pt-1">
+            <div className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-2.5 shadow-2xs">
+              <div className="pr-1">
+                <span className="text-xs font-black text-slate-800 block">حالة استلام الحساب:</span>
+                <span className="text-[11px] font-bold text-slate-500">
+                  {isPaid ? 'تم الدفع مسبقاً (مسدد) ✅' : 'تلقائياً: غير مدفوعة (متبقية) ⏳'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPaid?.(!isPaid)}
+                className={`px-3 py-1.5 rounded-xl font-black text-xs border transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer select-none ${
+                  isPaid
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                    : 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                }`}
+              >
+                <span>{isPaid ? 'تم الدفع مسبقاً ✅' : 'غير مدفوعة ⏳'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -119,11 +163,7 @@ const Keypad: React.FC<KeypadProps> = ({
         {keys.map((key) => (
           <button
             key={key}
-            onClick={() => {
-              if (key === 'C') onClear();
-              else if (key === '✓') onConfirm();
-              else onInput(key);
-            }}
+            onClick={() => handleKeyClick(key)}
             className={`
               h-16 sm:h-20 flex items-center justify-center text-2xl sm:text-3xl font-black rounded-2xl active:scale-95 transition-all
               ${

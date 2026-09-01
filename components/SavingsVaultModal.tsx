@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AppData, SavingsPlan, VaultEntry } from '../types';
+import { getStations, calculateDriverLevel } from '../data/gamificationData';
 
 interface SavingsVaultModalProps {
   data: AppData;
@@ -8,6 +9,8 @@ interface SavingsVaultModalProps {
   onWithdraw: () => void;
   onManualSettlement: () => void;
   onAddManualDeposit: () => void;
+  onOpenChest?: (stationNumber: number) => void;
+  onClearCharityFund?: () => void;
 }
 
 const PRESET_PLANS = [
@@ -47,6 +50,8 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
   onWithdraw,
   onManualSettlement,
   onAddManualDeposit,
+  onOpenChest,
+  onClearCharityFund,
 }) => {
   const currentPlan: SavingsPlan = data.savingsPlan || {
     targetAmount: 100000,
@@ -139,15 +144,25 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
     };
   };
 
-  const motivation = getMotivationMessage();
+  const stations = getStations(target);
+  const gamification = data.gamification || {
+    streakDays: 1,
+    lastStreakDate: data.currentDay.date,
+    totalXp: 500,
+    openedChests: [],
+    celebratedMilestones: [],
+    charityFund: 0,
+    unlockedTitles: ['سائق واعد 🌱'],
+    selectedTitle: 'سائق واعد 🌱',
+    strictCommitmentEnabled: true,
+    mysteryInventory: []
+  };
 
-  // Milestone checkpoints
-  const milestones = [
-    { label: '25%', amount: Math.round(target * 0.25) },
-    { label: '50%', amount: Math.round(target * 0.5) },
-    { label: '75%', amount: Math.round(target * 0.75) },
-    { label: '100%', amount: target },
-  ];
+  const driverStats = calculateDriverLevel(gamification.totalXp);
+  const nextStation = stations.find(s => totalSaved < s.targetAmount) || stations[stations.length - 1];
+  const amountToNextStation = Math.max(0, nextStation.targetAmount - totalSaved);
+
+  const [activeTab, setActiveTab] = useState<'roadmap' | 'inventory' | 'history'>('roadmap');
 
   const handleApplyCustomPlan = () => {
     const newTarget = parseInt(customTargetInput, 10) || 100000;
@@ -287,34 +302,176 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
           </div>
         </div>
 
-        {/* Milestone Steps */}
-        <div className="grid grid-cols-4 gap-1.5 text-center mb-5">
-          {milestones.map((m, i) => {
-            const isReached = totalSaved >= m.amount;
-            return (
-              <div
-                key={i}
-                className={`p-2 rounded-xl border text-[11px] font-black transition-all ${
-                  isReached
-                    ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
-                    : 'bg-white/5 border-white/10 text-gray-400'
-                }`}
-              >
-                <div className="text-[10px] opacity-80">{m.label}</div>
-                <div>{m.amount.toLocaleString()}</div>
-                <div className="text-[10px] mt-0.5">{isReached ? '✅ محقق' : '⏳ قادم'}</div>
+        {/* Driver Level, Streak, and XP Header Bar */}
+        <div className="bg-slate-900/90 border border-yellow-400/40 rounded-2xl p-3.5 mb-5 flex justify-between items-center flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 text-yellow-950 flex items-center justify-center font-black text-base shadow-sm">
+              L{driverStats.level}
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-yellow-300">{driverStats.title}</span>
+                <span className="text-[10px] font-black bg-orange-500/20 text-orange-300 border border-orange-400/30 px-2 py-0.5 rounded-full">
+                  🔥 تتابع: {gamification.streakDays} يوم
+                </span>
               </div>
-            );
-          })}
+              <div className="text-[10px] text-gray-400 font-bold mt-0.5">
+                نقاط الخبرة: {gamification.totalXp.toLocaleString()} XP
+              </div>
+            </div>
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] text-gray-400 block font-bold">المحطة القادمة:</span>
+            <span className="text-xs font-black text-emerald-400">
+              {amountToNextStation === 0 ? 'اكتملت جميع المحطات! 🏆' : `باقي ${amountToNextStation.toLocaleString()} أوقية`}
+            </span>
+          </div>
+        </div>
+
+        {/* 10-Station Interactive Roadmap Grid (خريطة المحطات العشر التفاعلية) */}
+        <div className="mb-5">
+          <div className="flex justify-between items-center mb-2.5">
+            <h4 className="text-xs font-black text-yellow-300 flex items-center gap-1.5">
+              <span>🗺️</span>
+              <span>خريطة المحطات الـ 10 (كل محطة مرحلة وصندوق أسرار 🎁)</span>
+            </h4>
+            <span className="text-[10px] font-bold text-gray-400">
+              منجز {stations.filter(s => totalSaved >= s.targetAmount).length} من 10
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {stations.map((s) => {
+              const isUnlocked = totalSaved >= s.targetAmount;
+              const isChestOpened = gamification.openedChests.includes(s.stationNumber);
+              const isCurrentTarget = nextStation.stationNumber === s.stationNumber && !isUnlocked;
+
+              return (
+                <div
+                  key={s.stationNumber}
+                  className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col justify-between relative overflow-hidden ${
+                    isUnlocked
+                      ? 'bg-gradient-to-b from-emerald-500/20 to-teal-500/10 border-emerald-400/60 text-emerald-200 shadow-xs'
+                      : isCurrentTarget
+                      ? 'bg-gradient-to-b from-amber-500/25 to-yellow-500/15 border-2 border-yellow-400 text-yellow-200 shadow-md shadow-yellow-500/10 animate-pulse'
+                      : 'bg-white/5 border-white/10 text-gray-400 opacity-65'
+                  }`}
+                >
+                  <div>
+                    <div className="flex justify-between items-center text-[10px] font-black mb-1">
+                      <span className="opacity-80">#{s.stationNumber}</span>
+                      <span>{s.badgeIcon}</span>
+                    </div>
+                    <div className="text-[11px] font-black leading-tight text-white mb-1">
+                      {s.targetAmount.toLocaleString()}
+                    </div>
+                    <div className="text-[9px] font-bold truncate opacity-90 mb-2">
+                      {s.title.replace(/[0-9]/g, '')}
+                    </div>
+                  </div>
+
+                  <div>
+                    {isUnlocked ? (
+                      isChestOpened ? (
+                        <div className="text-[10px] font-black text-emerald-300 bg-emerald-500/20 py-1 rounded-lg border border-emerald-500/30">
+                          ✅ مفتوح
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => onOpenChest && onOpenChest(s.stationNumber)}
+                          className="w-full bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 text-yellow-950 text-[10px] font-black py-1 rounded-lg shadow-sm active:scale-95 transition-all animate-bounce"
+                        >
+                          🎁 افتح!
+                        </button>
+                      )
+                    ) : isCurrentTarget ? (
+                      <div className="text-[9px] font-black text-amber-300 bg-amber-500/20 py-1 rounded-lg border border-amber-400/40">
+                        🎯 القادمة ({Math.max(0, s.targetAmount - totalSaved).toLocaleString()})
+                      </div>
+                    ) : (
+                      <div className="text-[10px] font-bold text-gray-500 py-1">
+                        🔒 مغلق
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Motivational Card Box */}
         <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/20 to-yellow-500/15 border border-yellow-400/40 rounded-2xl p-4 mb-4">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg">🌟</span>
-            <h4 className="font-black text-yellow-300 text-sm">{motivation.title}</h4>
+            <h4 className="font-black text-yellow-300 text-sm">{nextStation.title}</h4>
           </div>
-          <p className="text-xs font-bold text-gray-200 leading-relaxed pr-6">{motivation.desc}</p>
+          <p className="text-xs font-bold text-gray-200 leading-relaxed pr-6">{nextStation.dopamineMessage}</p>
+        </div>
+
+        {/* Mystery Cards Inventory & Charity Fund Showcase */}
+        {gamification.mysteryInventory.length > 0 && (
+          <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3.5 mb-4">
+            <h5 className="text-xs font-black text-yellow-300 mb-2 flex items-center justify-between">
+              <span>🎴 بطاقات العزيمة والألقاب المكتسبة ({gamification.mysteryInventory.length}):</span>
+            </h5>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {gamification.mysteryInventory.map((c) => (
+                <div key={c.id} className="bg-slate-800 border border-yellow-400/40 rounded-xl p-2.5 min-w-[140px] max-w-[160px] shrink-0 text-right">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-base">{c.icon}</span>
+                    <span className="text-[10px] font-black text-yellow-300 truncate">{c.title}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-300 line-clamp-2 italic mb-1">"{c.quote}"</p>
+                  <span className="text-[9px] font-black text-emerald-400 block">{c.perkTitle}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Silent Charity & Inactivity Discipline Box (صندوق الصدقة والانضباط المالي) */}
+        <div className="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 mb-4">
+          <div className="flex justify-between items-start flex-wrap gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📦</span>
+              <div>
+                <span className="text-emerald-300 font-black text-xs block">
+                  صندوق الصدقة والانضباط المالي (داخل الخزنة)
+                </span>
+                <span className="text-[10px] text-gray-400 font-bold block mt-0.5">
+                  يُخصم 150 أوقية بصمت عند كل تأخير أو انقطاع عن العمل لتتراكم كصدقة وتطهير للمال.
+                </span>
+              </div>
+            </div>
+
+            <div className="text-left">
+              <span className="text-[10px] text-gray-400 block font-bold">المستحقات المتراكمة:</span>
+              <span className={`text-base font-black ${gamification.charityFund > 0 ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                {gamification.charityFund.toLocaleString()} أوقية
+              </span>
+            </div>
+          </div>
+
+          {gamification.charityFund > 0 ? (
+            <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 mt-2">
+              <div className="text-[11px] text-emerald-200 font-bold text-right w-full sm:w-auto">
+                <span>تراكمت {gamification.charityFund} أوقية. عند إخراجها أو التصدق بها، اضغط "تم" لتصفير الصندوق والجاهزية للجولات القادمة.</span>
+              </div>
+              <button
+                onClick={() => onClearCharityFund && onClearCharityFund()}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-md active:scale-95 transition-all shrink-0 flex items-center justify-center gap-1.5"
+              >
+                <span>تم الإخراج والتصدق بها ✓</span>
+                <span className="text-[10px] bg-slate-950/20 px-1.5 py-0.5 rounded-md">تصفير (0)</span>
+              </button>
+            </div>
+          ) : (
+            <div className="text-[10px] font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
+              <span>✅ الصندوق مصفّر حالياً (0 أوقية) وجاهز. لا توجد أي مستحقات متأخرة.</span>
+              <span className="text-emerald-400 font-black">منضبط 🛡️</span>
+            </div>
+          )}
         </div>
 
         {/* Daily Pace Roadmap breakdown */}

@@ -7,6 +7,7 @@ interface VacationModalProps {
   onUpdateVacationFund: (fund: VacationFund) => void;
   onClose: () => void;
   onTestRewardScreen: () => void;
+  onToggleRadarSound?: () => void;
 }
 
 const DAYS_OF_WEEK = [
@@ -23,7 +24,8 @@ export const VacationFundModal: React.FC<VacationModalProps> = ({
   data,
   onUpdateVacationFund,
   onClose,
-  onTestRewardScreen
+  onTestRewardScreen,
+  onToggleRadarSound
 }) => {
   const currentFund = data.vacationFund || {
     targetAmount: 2000,
@@ -194,6 +196,32 @@ export const VacationFundModal: React.FC<VacationModalProps> = ({
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Passenger Absence Radar Sound Control inside Vacation Modal */}
+        <div className="mb-4 p-4 bg-amber-50 rounded-2xl border-2 border-amber-200 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm">📡</span>
+              <p className="font-black text-xs text-amber-950">صوت رادار غياب الركاب</p>
+            </div>
+            <p className="text-[10px] text-amber-800 font-bold mt-0.5">
+              {data.settings.inactivityAlertEnabled !== false
+                ? 'الصوت شغال ومفعل للتنبيه'
+                : 'الصوت مغلق ومكتوم حالياً'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onToggleRadarSound && onToggleRadarSound()}
+            className={`px-3.5 py-2 rounded-xl font-black text-xs border-2 shadow-sm active:scale-95 transition-all ${
+              data.settings.inactivityAlertEnabled !== false
+                ? 'bg-amber-600 text-white border-amber-700 hover:bg-amber-700'
+                : 'bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300'
+            }`}
+          >
+            {data.settings.inactivityAlertEnabled !== false ? 'إغلاق الصوت 🔕' : 'تشغيل الصوت 🔔'}
+          </button>
         </div>
 
         {/* Testing Button */}

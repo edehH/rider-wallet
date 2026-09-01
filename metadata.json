@@ -1,5 +1,6 @@
 {
   "name": "MR Rider Wallet (محفظة السائق)",
-  "description": "تطبيق مالي لسائقي التوصيل في موريتانيا، مصمم للرؤية العالية مع سحب المدخرات والأهداف التفاعلية.",
-  "requestFramePermissions": []
+  "description": "تطبيق مالي لسائقي التوصيل في موريتانيا، مصمم للرؤية العالية مع خطة الادخار التفاعلية بنظام المحطات الـ 10 والألعاب النفسية المحفزة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

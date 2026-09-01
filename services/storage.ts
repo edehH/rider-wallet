@@ -158,6 +158,20 @@ export const getInitialData = (): AppData => {
         dailyIncomeBaseline: 1500
       };
     }
+    if (!data.gamification) {
+      data.gamification = {
+        streakDays: 1,
+        lastStreakDate: currentWorkingDate,
+        totalXp: 500,
+        openedChests: [],
+        celebratedMilestones: [],
+        charityFund: 0,
+        unlockedTitles: ['سائق واعد 🌱'],
+        selectedTitle: 'سائق واعد 🌱',
+        strictCommitmentEnabled: true,
+        mysteryInventory: []
+      };
+    }
     return data;
   }
   
@@ -183,6 +197,18 @@ export const getInitialData = (): AppData => {
       startDate: currentWorkingDate,
       title: 'خطة تجميع 100,000 أوقية (3 أشهر)',
       dailyIncomeBaseline: 1500
+    },
+    gamification: {
+      streakDays: 1,
+      lastStreakDate: currentWorkingDate,
+      totalXp: 500,
+      openedChests: [],
+      celebratedMilestones: [],
+      charityFund: 0,
+      unlockedTitles: ['سائق واعد 🌱'],
+      selectedTitle: 'سائق واعد 🌱',
+      strictCommitmentEnabled: true,
+      mysteryInventory: []
     },
     lastSettlementDate: currentWorkingDate
   };
