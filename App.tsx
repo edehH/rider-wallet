@@ -12,6 +12,7 @@ import { SavingsVaultModal } from './components/SavingsVaultModal';
 import { MysteryMilestoneModal } from './components/MysteryMilestoneModal';
 import { HonorBadgeRibbon } from './components/HonorBadgeRibbon';
 import { HonorShowcaseModal } from './components/HonorShowcaseModal';
+import { ClientsLedgerModal } from './components/ClientsLedgerModal';
 import { OperationToast, OperationFeedback } from './components/OperationToast';
 import { DispatchCallAlert, AlertStage } from './components/DispatchCallAlert';
 import { getStations, generateMysteryCardForStation, calculateDriverLevel, StationInfo } from './data/gamificationData';
@@ -51,6 +52,7 @@ const App: React.FC = () => {
   const [showVacationModal, setShowVacationModal] = useState(false);
   const [testVacationReward, setTestVacationReward] = useState(false);
   const [showHonorShowcase, setShowHonorShowcase] = useState(false);
+  const [showClientsLedger, setShowClientsLedger] = useState(false);
 
   // Operation Identity Feedback Toast State
   const [operationToast, setOperationToast] = useState<OperationFeedback | null>(null);
@@ -98,7 +100,10 @@ const App: React.FC = () => {
   const [courseTitle, setCourseTitle] = useState('');
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
   const [isCoursePaid, setIsCoursePaid] = useState<boolean>(false);
+  const [showMissingClientError, setShowMissingClientError] = useState<boolean>(false);
 
   useEffect(() => {
     setData(getInitialData());
@@ -419,6 +424,17 @@ const App: React.FC = () => {
       const newTotalSaved = Math.max(0, newData.vault.reduce((acc, curr) => acc + curr.amount, 0));
       triggerStationCelebration(newData, newTotalSaved);
     } else if (activeInput.type === 'tempEarnings') {
+      // Mandatory Check: Client Name OR Phone MUST be provided
+      const trimmedClientName = clientName.trim();
+      const trimmedClientPhone = clientPhone.trim();
+
+      if (!trimmedClientName && !trimmedClientPhone) {
+        setShowMissingClientError(true);
+        playUndoSound();
+        return;
+      }
+
+      setShowMissingClientError(false);
       setTempEarningsValue(numValue);
       setInputValue('');
       playKeypadBeep('✓');
@@ -430,7 +446,8 @@ const App: React.FC = () => {
       newData.lastEarningTimestamp = Date.now(); // update inactivity timestamp
       
       const courseCount = newData.currentDay.operations.filter(o => o.type === 'earnings').length + 1;
-      const finalCourseTitle = courseTitle.trim() || (fromLocation.trim() && toLocation.trim() ? `${fromLocation.trim()} ➔ ${toLocation.trim()}` : `مكور #${courseCount}`);
+      const clientIdentifier = clientName.trim() || clientPhone.trim();
+      const finalCourseTitle = courseTitle.trim() || `${clientIdentifier} • مكور #${courseCount}`;
       const finalLabel = `كسب (${finalCourseTitle})`;
 
       const newOpE: Operation = {
@@ -441,6 +458,8 @@ const App: React.FC = () => {
         courseTitle: finalCourseTitle,
         fromLocation: fromLocation.trim() || undefined,
         toLocation: toLocation.trim() || undefined,
+        clientName: clientName.trim() || undefined,
+        clientPhone: clientPhone.trim() || undefined,
         isPaid: isCoursePaid, // default false (unpaid) or true if toggled to prepaid
         paidTimestamp: isCoursePaid ? new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : undefined,
         timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
@@ -451,6 +470,8 @@ const App: React.FC = () => {
         amount: numValue,
         label: `نسبة المالك (${finalCourseTitle})`,
         courseTitle: finalCourseTitle,
+        clientName: clientName.trim() || undefined,
+        clientPhone: clientPhone.trim() || undefined,
         timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
       };
       newData.currentDay.operations.push(newOpE, newOpS);
@@ -460,7 +481,7 @@ const App: React.FC = () => {
       triggerFeedback({
         id: Math.random().toString(),
         type: 'earning',
-        title: `تم تسجيل: ${finalCourseTitle} 💰`,
+        title: `تم تسجيل مشوار: ${clientIdentifier} 💰`,
         subtitle: `كسب: ${tempEarningsValue.toLocaleString()} أوقية (${isCoursePaid ? 'تم الدفع مسبقاً ✅' : 'غير مدفوع ⏳'}) | نسبة المالك: ${numValue.toLocaleString()} أوقية`,
         amount: tempEarningsValue,
         icon: isCoursePaid ? '✅' : '⏳'
@@ -470,7 +491,10 @@ const App: React.FC = () => {
       setCourseTitle('');
       setFromLocation('');
       setToLocation('');
+      setClientName('');
+      setClientPhone('');
       setIsCoursePaid(false);
+      setShowMissingClientError(false);
     } else if (activeInput.type === 'editOperation' && activeInput.operationId) {
       const opIndex = newData.currentDay.operations.findIndex(o => o.id === activeInput.operationId);
       if (opIndex > -1) {
@@ -737,9 +761,49 @@ const App: React.FC = () => {
     setCourseTitle('');
     setFromLocation('');
     setToLocation('');
+    setClientName('');
+    setClientPhone('');
     setIsCoursePaid(false);
+    setShowMissingClientError(false);
     if (showVault && !vaultUnlocked) setShowVault(false);
   }, [showVault, vaultUnlocked]);
+
+  const handleMarkAllClientPaid = (clientIdentifier: string) => {
+    if (!data) return;
+    const newData = { ...data };
+    let updatedCount = 0;
+    let updatedTotal = 0;
+
+    newData.currentDay.operations.forEach((op) => {
+      if (op.type === 'earnings' && op.isPaid === false) {
+        const match =
+          (op.clientName && op.clientName.trim() === clientIdentifier.trim()) ||
+          (op.clientPhone && op.clientPhone.trim() === clientIdentifier.trim()) ||
+          (!op.clientName && !op.clientPhone && clientIdentifier === 'زبون عام / غير مسجل');
+
+        if (match) {
+          op.isPaid = true;
+          op.paidTimestamp = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+          updatedCount++;
+          updatedTotal += op.amount || 0;
+        }
+      }
+    });
+
+    if (updatedCount > 0) {
+      setData(newData);
+      saveData(newData);
+      playKeypadBeep('✓');
+      triggerFeedback({
+        id: Math.random().toString(),
+        type: 'earning',
+        title: `تم تسديد جميع المشاوير (${updatedCount}) ✅`,
+        subtitle: `المبلغ المسدد: ${updatedTotal.toLocaleString()} أوقية لـ ${clientIdentifier}`,
+        amount: updatedTotal,
+        icon: '💵'
+      });
+    }
+  };
 
   const handleTogglePaidStatus = (opId: string) => {
     if (!data) return;
@@ -846,6 +910,13 @@ const App: React.FC = () => {
           <p className="text-gray-500 font-bold text-sm mt-1">{data.currentDay.date}</p>
         </div>
         <div className="flex gap-2">
+          <button 
+            onClick={() => setShowClientsLedger(true)} 
+            className="p-3 bg-indigo-50 hover:bg-indigo-100 rounded-2xl text-indigo-900 border-2 border-indigo-200 shadow-sm active:bg-indigo-200 text-lg font-black flex items-center justify-center transition-transform active:scale-95"
+            title="دفتر حسابات الزبائن والديون"
+          >
+            👥
+          </button>
           <button 
             onClick={() => setShowVacationModal(true)} 
             className="p-3 bg-emerald-900 rounded-2xl text-emerald-300 border-2 border-emerald-700 shadow-sm active:bg-emerald-800 text-lg font-black flex items-center justify-center transition-transform active:scale-95"
@@ -1076,9 +1147,14 @@ const App: React.FC = () => {
               setFromLocation={setFromLocation}
               toLocation={toLocation}
               setToLocation={setToLocation}
+              clientName={clientName}
+              setClientName={setClientName}
+              clientPhone={clientPhone}
+              setClientPhone={setClientPhone}
               isDuplicateCourse={isDuplicateCourse}
               isPaid={isCoursePaid}
               setIsPaid={setIsCoursePaid}
+              showMissingClientError={showMissingClientError}
             />
           </div>
         </div>
@@ -1163,6 +1239,46 @@ const App: React.FC = () => {
                         </span>
                       )}
                     </div>
+
+                    {/* Client Name & Phone Reminder Details */}
+                    {(op.clientName || op.clientPhone) && (
+                      <div className="flex items-center gap-2 text-xs font-bold bg-indigo-50/70 border border-indigo-200/80 rounded-xl px-2.5 py-1.5 w-fit flex-wrap">
+                        <span className="text-indigo-900 flex items-center gap-1">
+                          <span>👤</span>
+                          <span className="font-black">{op.clientName || 'زبون'}</span>
+                        </span>
+                        {op.clientPhone && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-slate-700 dir-ltr text-[11px]" dir="ltr">
+                              📞 {op.clientPhone}
+                            </span>
+                            <a
+                              href={`tel:${op.clientPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-md text-[10px] font-black transition-all active:scale-95"
+                              title="اتصال هاتف"
+                            >
+                              اتصال
+                            </a>
+                            {isUnpaidEarning && (
+                              <a
+                                href={`https://wa.me/${op.clientPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                  `السلام عليكم أخي الكريم 🌹\nنذكركم بخصوص حساب مشوار توصيل (${op.courseTitle || op.label}) بقيمة ${op.amount.toLocaleString()} أوقية.\nشكراً جزيلاً!`
+                                )}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-black transition-all active:scale-95 flex items-center gap-0.5"
+                                title="تذكير عبر واتساب"
+                              >
+                                <span>💬</span>
+                                <span>واتساب</span>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {hasRoute && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold pr-4">
@@ -1407,6 +1523,17 @@ const App: React.FC = () => {
           isOpen={showHonorShowcase}
           onClose={() => setShowHonorShowcase(false)}
           onSelectTitle={handleSelectHonorTitle}
+        />
+      )}
+
+      {/* Clients & Shop Ledger Modal (دفتر حسابات الزبائن والديون المعلقة) */}
+      {showClientsLedger && (
+        <ClientsLedgerModal
+          isOpen={showClientsLedger}
+          onClose={() => setShowClientsLedger(false)}
+          operations={data.currentDay.operations}
+          onTogglePaidStatus={handleTogglePaidStatus}
+          onMarkAllClientPaid={handleMarkAllClientPaid}
         />
       )}
 

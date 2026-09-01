@@ -16,9 +16,14 @@ interface KeypadProps {
   setFromLocation?: (val: string) => void;
   toLocation?: string;
   setToLocation?: (val: string) => void;
+  clientName?: string;
+  setClientName?: (val: string) => void;
+  clientPhone?: string;
+  setClientPhone?: (val: string) => void;
   isDuplicateCourse?: boolean;
   isPaid?: boolean;
   setIsPaid?: (val: boolean) => void;
+  showMissingClientError?: boolean;
 }
 
 const Keypad: React.FC<KeypadProps> = ({
@@ -35,9 +40,14 @@ const Keypad: React.FC<KeypadProps> = ({
   setFromLocation,
   toLocation = '',
   setToLocation,
+  clientName = '',
+  setClientName,
+  clientPhone = '',
+  setClientPhone,
   isDuplicateCourse = false,
   isPaid = false,
   setIsPaid,
+  showMissingClientError = false,
 }) => {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '✓'];
 
@@ -75,6 +85,17 @@ const Keypad: React.FC<KeypadProps> = ({
       {/* Free-form text fields: No default presets, free typing */}
       {isCourseInput && (
         <div className="mb-4 bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
+          {/* Missing Client Mandatory Error Alert */}
+          {showMissingClientError && (
+            <div className="p-3 rounded-xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs font-black flex items-center gap-2 animate-bounce">
+              <span className="text-lg">⚠️</span>
+              <div>
+                <span>يرجى كتابة اسم الزبون / المحل أو رقم الهاتف أولاً!</span>
+                <p className="text-[10px] text-rose-700 font-bold mt-0.5">تسجيل اسم أو رقم صاحب الرسالة إلزامي لضمان الرجوع إليه وتذكيره بالدفع بسهولة.</p>
+              </div>
+            </div>
+          )}
+
           {/* Duplicate Notice */}
           {isDuplicateCourse && (
             <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-black flex items-center gap-2">
@@ -83,17 +104,52 @@ const Keypad: React.FC<KeypadProps> = ({
             </div>
           )}
 
+          {/* MANDATORY: Client / Shop Name & Phone Number */}
+          <div className="bg-white p-3 rounded-xl border-2 border-indigo-200 shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                <span>👤</span>
+                <span>اسم الزبون / المحل أو رقم الهاتف <span className="text-rose-600 font-bold text-xs">* (إلزامي للتذكير)</span>:</span>
+              </label>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName?.(e.target.value)}
+                placeholder="اسم الزبون أو المحل (مثلاً: أحمد، صيدلية النور...)*"
+                className={`w-full text-xs font-bold p-2.5 bg-slate-50 border rounded-xl focus:outline-none focus:bg-white text-right transition-all ${
+                  showMissingClientError && !clientName.trim() && !clientPhone.trim()
+                    ? 'border-rose-400 ring-2 ring-rose-200'
+                    : 'border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+                }`}
+              />
+              <input
+                type="tel"
+                value={clientPhone}
+                onChange={(e) => setClientPhone?.(e.target.value)}
+                placeholder="رقم الهاتف أو الواتساب (مثال: 44123456)..."
+                className="w-full text-xs font-bold p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:bg-white text-right transition-all font-mono"
+                dir="ltr"
+              />
+            </div>
+            <p className="text-[10px] text-slate-500 font-bold">
+              💡 يُمكّنك من الوصول لصاحب المشوار مباشرة للتذكير بالدفع أو التواصل عبر الواتساب.
+            </p>
+          </div>
+
           {/* Direct Title Input Field */}
           <div>
-            <label className="text-xs font-black text-slate-700 block mb-1">
-              عنوان الرسالة / اسم المكور (اكتب أي اسم بحرية):
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              عنوان الرسالة / نوع الغرض (اختياري):
             </label>
             <input
               type="text"
               value={courseTitle}
               onChange={(e) => setCourseTitle?.(e.target.value)}
-              placeholder="اكتب هنا عنوان أو اسم المكور..."
-              className="w-full text-sm font-bold p-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-right transition-all"
+              placeholder="مثلاً: توصيل طرد، أوراق، دواء..."
+              className="w-full text-xs font-bold p-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-right transition-all"
             />
           </div>
 
@@ -101,13 +157,13 @@ const Keypad: React.FC<KeypadProps> = ({
           <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="text-xs font-bold text-slate-600 block mb-1">
-                اسم المرسل / من أين:
+                من أين (الموقع):
               </label>
               <input
                 type="text"
                 value={fromLocation}
                 onChange={(e) => setFromLocation?.(e.target.value)}
-                placeholder="من أين..."
+                placeholder="مكان الاستلام..."
                 className="w-full text-xs font-bold p-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-right transition-all"
               />
             </div>
@@ -119,7 +175,7 @@ const Keypad: React.FC<KeypadProps> = ({
                 type="text"
                 value={toLocation}
                 onChange={(e) => setToLocation?.(e.target.value)}
-                placeholder="إلى أين..."
+                placeholder="مكان التوصيل..."
                 className="w-full text-xs font-bold p-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-right transition-all"
               />
             </div>

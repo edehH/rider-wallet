@@ -10,8 +10,19 @@ export interface Operation {
   courseTitle?: string; // اسم أو عنوان المكور / الكورس
   fromLocation?: string; // من أين / اسم المرسل
   toLocation?: string; // إلى أين / الوجهة
+  clientName?: string; // اسم الزبون أو المحل
+  clientPhone?: string; // رقم هاتف الزبون أو الواتساب للتذكير
   isPaid?: boolean; // حالة الدفع: true = تم الدفع، false = غير مدفوع / مؤجل
   paidTimestamp?: string;
+}
+
+export interface ClientProfile {
+  name: string;
+  phone?: string;
+  totalCoursesCount: number;
+  unpaidCount: number;
+  unpaidTotalAmount: number;
+  lastTripDate?: string;
 }
 
 export interface Objective {
