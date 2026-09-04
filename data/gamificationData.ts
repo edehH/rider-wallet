@@ -14,140 +14,140 @@ export interface StationInfo {
   dopamineMessage: string;
 }
 
-// 10 Progressive Stations for the 100,000 UM target (scalable based on plan)
-export const getStations = (planTarget: number = 100000): StationInfo[] => {
-  const step = Math.max(1000, Math.round(planTarget / 10));
+// 10 Progressive Stations for the 10,000 UM target divided over 10 days
+export const getStations = (planTarget: number = 10000): StationInfo[] => {
+  const step = Math.max(500, Math.round(planTarget / 10));
   
   return [
     {
       stationNumber: 1,
       targetAmount: step * 1,
       title: 'محطة الشرارة الأولى ⚡',
-      subtitle: 'كسر حاجز الصفر وبداية بناء رأس المال',
+      subtitle: 'اليوم الأول: كسر حاجز الصفر وبداية بناء رأس المال',
       badgeIcon: '⚡',
       color: 'from-amber-600 to-yellow-500',
       themeColor: '#f59e0b',
       particleColors: ['#fbbf24', '#f59e0b', '#d97706', '#fef08a', '#ffffff'],
       bgGradient: 'from-amber-950 via-yellow-900 to-slate-950',
       specialAnimation: 'electric_storm',
-      dopamineMessage: 'أول 10 آلاف هي الأصعب على الإطلاق! لقد أثبت أنك قادر على التوفير وتغلبت على 90% من المترددين!'
+      dopamineMessage: `أول ${(step * 1).toLocaleString()} أوقية في التحدي! بداية نارية ومبهرة تثبت عزمك القوي على إنجاز الـ 10 آلاف في 10 أيام!`
     },
     {
       stationNumber: 2,
       targetAmount: step * 2,
       title: 'محطة قوة الدفع النفاثة 🚀',
-      subtitle: 'تحول الادخار إلى عادة يومية تلقائية',
+      subtitle: 'اليوم الثاني: تحول الادخار إلى عادة يومية منتظمة',
       badgeIcon: '🚀',
       color: 'from-blue-600 to-cyan-500',
       themeColor: '#06b6d4',
       particleColors: ['#38bdf8', '#06b6d4', '#0284c7', '#e0f2fe', '#ffffff'],
       bgGradient: 'from-cyan-950 via-blue-900 to-slate-950',
       specialAnimation: 'hyper_drive',
-      dopamineMessage: 'السرعة تضاعفت! لم يعد الأمر مجرد محاولة، بل أصبح أسلوب حياة احترافي يحقق النتائج!'
+      dopamineMessage: `${(step * 2).toLocaleString()} أوقية في الخزنة! وتيرة الـ 10 أيام تسير بانتظام واحتراف!`
     },
     {
       stationNumber: 3,
       targetAmount: step * 3,
       title: 'محطة كاسر الحواجز 🛡️',
-      subtitle: 'تخطي أول شهر من الالتزام الخالص',
+      subtitle: 'اليوم الثالث: الانضباط الصلب وبناء الأمان',
       badgeIcon: '⚔️',
       color: 'from-indigo-600 to-purple-500',
       themeColor: '#8b5cf6',
       particleColors: ['#a855f7', '#8b5cf6', '#6366f1', '#f3e8ff', '#ffffff'],
       bgGradient: 'from-purple-950 via-indigo-900 to-slate-950',
       specialAnimation: 'arcane_shield',
-      dopamineMessage: '30 ألف أوقية صلبة في خزينتك! الآن أصبحت ترى أثر تعبك يتحول إلى أمان مالي حقيقي ومبهر!'
+      dopamineMessage: `${(step * 3).toLocaleString()} أوقية صلبة في خزينتك! الآن أصبحت ترى أثر تعبك يتحول إلى أمان مالي حقيقي ومبهر!`
     },
     {
       stationNumber: 4,
       targetAmount: step * 4,
       title: 'محطة وحش الإسفلت 🦁',
-      subtitle: 'قوة التركيز التي لا تقهر',
+      subtitle: 'اليوم الرابع: قوة التركيز واقتراب منتصف الطريق',
       badgeIcon: '🔥',
       color: 'from-orange-600 to-red-500',
       themeColor: '#f97316',
       particleColors: ['#fb923c', '#f97316', '#ef4444', '#fee2e2', '#ffffff'],
       bgGradient: 'from-rose-950 via-orange-900 to-slate-950',
       specialAnimation: 'fire_burst',
-      dopamineMessage: '40 ألف أوقية! أنت تقترب من منتصف الطريق بسرعة البرق.. العزيمة في أوج قوتها واشتعالها!'
+      dopamineMessage: `${(step * 4).toLocaleString()} أوقية! أنت تقترب من منتصف طريق الـ 10 أيام بسرعة الصاروخ.. العزيمة مشتعلة!`
     },
     {
       stationNumber: 5,
       targetAmount: step * 5,
       title: 'محطة النصف الذهبي 👑',
-      subtitle: 'نصف الهدف تحقق.. الباقي أسهل بكثير!',
+      subtitle: 'اليوم الخامس: منتصف التحدي.. 5,000 أوقية بالكامل!',
       badgeIcon: '👑',
       color: 'from-yellow-500 to-amber-400',
       themeColor: '#eab308',
       particleColors: ['#fde047', '#eab308', '#ca8a04', '#fef9c3', '#ffffff'],
       bgGradient: 'from-yellow-950 via-amber-900 to-slate-950',
       specialAnimation: 'golden_rain',
-      dopamineMessage: '50,000 أوقية كاملة! قطعت نصف المسافة.. أنت الآن تنحدر نحو خط النهاية بثقة الفائزين العظماء!'
+      dopamineMessage: `${(step * 5).toLocaleString()} أوقية كاملة! قطعت نصف مسافة التحدي.. أنت الآن تنحدر نحو خط النهاية بثقة الأبطال!`
     },
     {
       stationNumber: 6,
       targetAmount: step * 6,
       title: 'محطة الانضباط الماسي 💎',
-      subtitle: 'الأموال تبدأ في العمل لصالحك',
+      subtitle: 'اليوم السادس: عبور النصف والاقتراب الحاسم',
       badgeIcon: '💎',
       color: 'from-emerald-600 to-teal-400',
       themeColor: '#10b981',
       particleColors: ['#34d399', '#10b981', '#059669', '#d1fae5', '#ffffff'],
       bgGradient: 'from-emerald-950 via-teal-900 to-slate-950',
       specialAnimation: 'diamond_shards',
-      dopamineMessage: '60 ألف أوقية! الانضباط تحول إلى درع يحميك من أي فوضى مالية. فخورون بصلابتك!'
+      dopamineMessage: `${(step * 6).toLocaleString()} أوقية! الانضباط تحول إلى درع يحميك ويزيدك قوة يوماً بعد يوم!`
     },
     {
       stationNumber: 7,
       targetAmount: step * 7,
       title: 'محطة الإعصار المالي 🌪️',
-      subtitle: 'تسارع غير مسبوق نحو خط النهاية',
+      subtitle: 'اليوم السابع: تسارع غير مسبوق نحو خط النهاية',
       badgeIcon: '🌪️',
       color: 'from-purple-600 to-pink-500',
       themeColor: '#ec4899',
       particleColors: ['#f472b6', '#ec4899', '#db2777', '#fce7f3', '#ffffff'],
       bgGradient: 'from-pink-950 via-purple-900 to-slate-950',
       specialAnimation: 'vortex_spin',
-      dopamineMessage: '70 ألف أوقية! لم يتبق سوى القليل جداً، الهدف أصبح يلوح في الأفق بوضوح وبريق ساطع!'
+      dopamineMessage: `${(step * 7).toLocaleString()} أوقية! لم يتبق سوى 3 أيام فقط، الهدف أصبح يلوح في الأفق ببريق ساطع!`
     },
     {
       stationNumber: 8,
       targetAmount: step * 8,
       title: 'محطة صقر النخبة 🦅',
-      subtitle: 'أنت الآن في أعلى 1% من السائقين التزاماً',
+      subtitle: 'اليوم الثامن: أنت الآن في أعلى درجات الالتزام',
       badgeIcon: '🦅',
       color: 'from-sky-600 to-blue-400',
       themeColor: '#38bdf8',
       particleColors: ['#7dd3fc', '#38bdf8', '#0284c7', '#f0f9ff', '#ffffff'],
       bgGradient: 'from-sky-950 via-blue-950 to-slate-950',
       specialAnimation: 'celestial_beam',
-      dopamineMessage: '80 ألف أوقية! رأس مالك الجديد أصبح حقيقة ملموسة تنتظر استثمارك القادم وصناعة مجدك!'
+      dopamineMessage: `${(step * 8).toLocaleString()} أوقية! رأس مالك الجديد أصبح حقيقة ملموسة وخط النهاية يناديك!`
     },
     {
       stationNumber: 9,
       targetAmount: step * 9,
       title: 'محطة أبواب المجد 🔥',
-      subtitle: 'المحطة قبل الأخيرة.. خطوة واحدة فقط!',
+      subtitle: 'اليوم التاسع: المحطة قبل الأخيرة.. خطوة واحدة فقط!',
       badgeIcon: '🔥',
       color: 'from-rose-600 to-amber-500',
       themeColor: '#f43f5e',
       particleColors: ['#fb7185', '#f43f5e', '#e11d48', '#ffe4e6', '#ffffff'],
       bgGradient: 'from-rose-950 via-red-900 to-slate-950',
       specialAnimation: 'meteor_shower',
-      dopamineMessage: '90 ألف أوقية! اسمع دقات قلبك.. أنت على بعد رمية حجر من المائة ألف الأسطورية الخالدة!'
+      dopamineMessage: `${(step * 9).toLocaleString()} أوقية! اسمع دقات قلبك.. أنت على بعد خطوة واحدة فقط من الـ 10,000 أوقية الأسطورية!`
     },
     {
       stationNumber: 10,
       targetAmount: step * 10,
-      title: 'محطة أسطورة الـ 100 ألف 🏆',
-      subtitle: 'اكتمال الهدف وصناعة رأس المال العظيم',
+      title: 'محطة أسطورة الـ 10 آلاف 🏆',
+      subtitle: 'اليوم العاشر: اكتمال التحدي وتحقيق الـ 10,000 أوقية',
       badgeIcon: '🏆',
       color: 'from-yellow-400 via-amber-300 to-yellow-500',
       themeColor: '#fbbf24',
       particleColors: ['#fef08a', '#fde047', '#f59e0b', '#fbbf24', '#ffffff', '#ec4899', '#38bdf8'],
       bgGradient: 'from-amber-900 via-yellow-950 to-slate-950',
       specialAnimation: 'supernova_victory',
-      dopamineMessage: '🏆 100,000 أوقية كاملة! حققت المعجزة بإرادتك وعرق جبينك.. أنت أسطورة حقيقية تستحق كل احترام وفخر واعتزاز!'
+      dopamineMessage: `🏆 ${(step * 10).toLocaleString()} أوقية كاملة! حققت التحدي بإرادتك وعرق جبينك.. أنت أسطورة حقيقية تستحق كل فخر واعتزاز!`
     }
   ];
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppData, SavingsPlan, VaultEntry } from '../types';
 import { getStations, calculateDriverLevel } from '../data/gamificationData';
+import { calculateTenDayChallenge } from '../data/tenDayChallenge';
 
 interface SavingsVaultModalProps {
   data: AppData;
@@ -10,36 +11,38 @@ interface SavingsVaultModalProps {
   onManualSettlement: () => void;
   onAddManualDeposit: () => void;
   onOpenChest?: (stationNumber: number) => void;
-  onClearCharityFund?: () => void;
 }
 
 const PRESET_PLANS = [
   {
-    targetAmount: 100000,
-    timeframeMonths: 3,
-    title: 'خطة الـ 100,000 أوقية (3 أشهر - 90 يوماً)',
+    targetAmount: 10000,
+    timeframeMonths: 1,
+    durationDays: 10,
+    title: 'تحدي الـ 10,000 أوقية (10 أيام - 1,000/يوم)',
     dailyIncomeBaseline: 1500,
-    dailySavingsNeeded: 1111,
+    dailySavingsNeeded: 1000,
     icon: '🎯',
-    badge: 'الهدف السريع للشباب',
+    badge: 'الهدف الرئيسي المعتمد',
   },
   {
-    targetAmount: 180000,
-    timeframeMonths: 3,
-    title: 'خطة الـ 180,000 أوقية (3 أشهر - 90 يوماً)',
+    targetAmount: 20000,
+    timeframeMonths: 1,
+    durationDays: 20,
+    title: 'تحدي الـ 20,000 أوقية (20 يوماً - 1,000/يوم)',
     dailyIncomeBaseline: 1500,
-    dailySavingsNeeded: 2000,
+    dailySavingsNeeded: 1000,
     icon: '🚀',
-    badge: 'الهدف الذهبي المكثف',
+    badge: 'المستوى المكثف',
   },
   {
-    targetAmount: 50000,
-    timeframeMonths: 3,
-    title: 'خطة الـ 50,000 أوقية (3 أشهر)',
+    targetAmount: 5000,
+    timeframeMonths: 1,
+    durationDays: 5,
+    title: 'تحدي الـ 5,000 أوقية (5 أيام - 1,000/يوم)',
     dailyIncomeBaseline: 1500,
-    dailySavingsNeeded: 556,
+    dailySavingsNeeded: 1000,
     icon: '⚡',
-    badge: 'هدف انطلاقة ميسرة',
+    badge: 'انطلاقة سريعة',
   },
 ];
 
@@ -51,18 +54,20 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
   onManualSettlement,
   onAddManualDeposit,
   onOpenChest,
-  onClearCharityFund,
 }) => {
+  const challengeState = calculateTenDayChallenge(data);
+
   const currentPlan: SavingsPlan = data.savingsPlan || {
-    targetAmount: 100000,
-    timeframeMonths: 3,
+    targetAmount: 10000,
+    timeframeMonths: 1,
+    durationDays: 10,
     startDate: data.currentDay.date,
-    title: 'خطة تجميع 100,000 أوقية (3 أشهر)',
+    title: 'تحدي تجميع 10,000 أوقية (10 أيام)',
     dailyIncomeBaseline: 1500,
   };
 
   const [isEditingCustomTarget, setIsEditingCustomTarget] = useState(false);
-  const [customTargetInput, setCustomTargetInput] = useState(String(currentPlan.targetAmount));
+  const [customTargetInput, setCustomTargetInput] = useState(String(currentPlan.targetAmount || 10000));
   const [customIncomeInput, setCustomIncomeInput] = useState(String(currentPlan.dailyIncomeBaseline || 1500));
 
   // Calculations
@@ -73,21 +78,24 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
 
   // Total saved includes confirmed vault + live un-settled surplus
   const totalSaved = Math.max(0, totalSavedInVault + unsettledLive);
-  const target = currentPlan.targetAmount || 100000;
+  const target = currentPlan.targetAmount || 10000;
   const remaining = Math.max(0, target - totalSaved);
   const progressPct = Math.min(100, Math.max(0, (totalSaved / target) * 100));
 
-  const totalDays = (currentPlan.timeframeMonths || 3) * 30;
+  const totalDays = currentPlan.durationDays || (currentPlan.timeframeMonths ? currentPlan.timeframeMonths * 30 : 10);
   const dailyNeeded = Math.max(1, Math.round(target / totalDays));
   const dailyIncome = currentPlan.dailyIncomeBaseline || 1500;
   const dailySavingsRatio = Math.round((dailyNeeded / dailyIncome) * 100);
 
-  // Performance-based Days & Months Countdown (Shortened directly as user saves more)
+  // Performance-based Days Countdown (Shortened directly as user saves more)
   const daysCompleted = Math.min(totalDays, Math.floor(totalSaved / dailyNeeded));
   const daysRemaining = Math.max(0, Math.ceil(remaining / dailyNeeded));
 
   const formatRemainingText = (days: number) => {
     if (days <= 0) return '0 يوم (اكتمل الهدف بنجاح! 🏆)';
+    if (totalDays <= 15) {
+      return `${days} ${days === 1 ? 'يوم' : days === 2 ? 'يومان' : days <= 10 ? 'أيام' : 'يوماً'} متبقية`;
+    }
     const m = Math.floor(days / 30);
     const d = days % 30;
     if (m > 0 && d > 0) {
@@ -219,6 +227,35 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
           </div>
         </div>
 
+        {/* Real-time 10-day Pacing Banner in Vault */}
+        {challengeState.status === 'ahead' && (
+          <div className="bg-emerald-500/20 border border-emerald-400/50 rounded-2xl p-3 mb-4 flex items-center justify-between flex-wrap gap-2 text-xs">
+            <span className="font-black text-emerald-300 flex items-center gap-1.5">
+              <span>⚡</span>
+              <span>{challengeState.statusTitle}</span>
+            </span>
+            <span className="bg-emerald-400 text-emerald-950 px-2.5 py-0.5 rounded-lg font-black text-[11px]">
+              {challengeState.statusBadge}
+            </span>
+          </div>
+        )}
+        {challengeState.status === 'behind' && (
+          <div className="bg-rose-500/20 border border-rose-500/60 rounded-2xl p-3 mb-4 space-y-1.5 text-xs">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-black text-rose-300 flex items-center gap-1.5">
+                <span>⏳</span>
+                <span>{challengeState.statusTitle}</span>
+              </span>
+              <span className="bg-rose-500 text-white px-2.5 py-0.5 rounded-lg font-black text-[11px]">
+                عجز: {challengeState.deficitAmount.toLocaleString()} أوقية
+              </span>
+            </div>
+            <p className="text-[11px] text-rose-200/80 font-bold">
+              المطلوب حتى اليوم {challengeState.currentDay}: {challengeState.expectedSavedAmount.toLocaleString()} أوقية (المتوفر: {challengeState.actualSaved.toLocaleString()} أوقية)
+            </p>
+          </div>
+        )}
+
         {/* Primary Amount Displays: Total Saved vs REMAINING AMOUNT & REMAINING DAYS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-6">
           {/* Box 1: Saved so far */}
@@ -284,20 +321,60 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
           </div>
         </div>
 
-        {/* Dynamic Progress Bar */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs font-black mb-1.5">
-            <span className="text-gray-300">مسار التقدم نحو {target.toLocaleString()} أوقية:</span>
-            <span className="text-yellow-400 font-bold">{progressPct.toFixed(1)}%</span>
-          </div>
-          <div className="w-full bg-slate-800/80 rounded-full h-7 overflow-hidden border-2 border-slate-700 p-1 shadow-inner relative">
-            <div
-              className="h-full rounded-full transition-all duration-700 ease-out flex items-center justify-end px-2 bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-md"
-              style={{ width: `${Math.max(5, progressPct)}%` }}
-            >
-              <span className="text-xs font-black text-slate-950">
-                {progressPct >= 15 ? `${progressPct.toFixed(0)}%` : ''} 🏁
+        {/* Dual Race Tracks: Financial Progress & Adjacent 10-Day Timeline */}
+        <div className="mb-5 bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-3">
+          {/* Track 1: Financial Progress */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-black mb-1">
+              <span className="text-gray-300 flex items-center gap-1.5">
+                <span>💰</span>
+                <span>مسار التقدم نحو {target.toLocaleString()} أوقية:</span>
               </span>
+              <span className="text-yellow-400 font-bold font-mono">
+                {totalSaved.toLocaleString()} أوقية ({progressPct.toFixed(1)}%)
+              </span>
+            </div>
+            <div className="w-full bg-slate-800/80 rounded-full h-6 overflow-hidden border-2 border-slate-700 p-0.5 shadow-inner relative">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out flex items-center justify-end px-2 bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-md"
+                style={{ width: `${Math.min(100, Math.max(4, progressPct))}%` }}
+              >
+                <span className="text-[10px] font-black text-slate-950">
+                  {progressPct >= 12 ? `${progressPct.toFixed(0)}%` : ''} 🏁
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Track 2: Adjacent 10-Day Timeline (ملاصق لمسار التقدم) */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-black mb-1">
+              <span className="text-blue-300 flex items-center gap-1.5">
+                <span>⏱️</span>
+                <span>الخط الزمني (العشرة أيام):</span>
+              </span>
+              <div className="flex items-center gap-1.5">
+                {challengeState.isStarted && (
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                    challengeState.raceLead === 'driver'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : challengeState.raceLead === 'time'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                  }`}>
+                    {challengeState.raceLead === 'driver' ? '🚀 متقدم على الزمن' : challengeState.raceLead === 'time' ? '⏳ الزمن يسبقك' : '🎯 متعادل'}
+                  </span>
+                )}
+                <span className="text-blue-300 font-bold font-mono">
+                  {challengeState.isStarted ? `اليوم ${challengeState.currentDay} من 10 (${challengeState.timeProgressPct.toFixed(0)}%)` : 'يبدأ مع أول مكسب'}
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-slate-800/80 rounded-full h-4 overflow-hidden border border-blue-500/30 p-0.5 relative">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 shadow-md"
+                style={{ width: `${Math.min(100, Math.max(3, challengeState.timeProgressPct))}%` }}
+              />
             </div>
           </div>
         </div>
@@ -429,50 +506,6 @@ export const SavingsVaultModal: React.FC<SavingsVaultModalProps> = ({
             </div>
           </div>
         )}
-
-        {/* Silent Charity & Inactivity Discipline Box (صندوق الصدقة والانضباط المالي) */}
-        <div className="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 mb-4">
-          <div className="flex justify-between items-start flex-wrap gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📦</span>
-              <div>
-                <span className="text-emerald-300 font-black text-xs block">
-                  صندوق الصدقة والانضباط المالي (داخل الخزنة)
-                </span>
-                <span className="text-[10px] text-gray-400 font-bold block mt-0.5">
-                  يُخصم 150 أوقية بصمت عند كل تأخير أو انقطاع عن العمل لتتراكم كصدقة وتطهير للمال.
-                </span>
-              </div>
-            </div>
-
-            <div className="text-left">
-              <span className="text-[10px] text-gray-400 block font-bold">المستحقات المتراكمة:</span>
-              <span className={`text-base font-black ${gamification.charityFund > 0 ? 'text-yellow-400' : 'text-emerald-400'}`}>
-                {gamification.charityFund.toLocaleString()} أوقية
-              </span>
-            </div>
-          </div>
-
-          {gamification.charityFund > 0 ? (
-            <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 mt-2">
-              <div className="text-[11px] text-emerald-200 font-bold text-right w-full sm:w-auto">
-                <span>تراكمت {gamification.charityFund} أوقية. عند إخراجها أو التصدق بها، اضغط "تم" لتصفير الصندوق والجاهزية للجولات القادمة.</span>
-              </div>
-              <button
-                onClick={() => onClearCharityFund && onClearCharityFund()}
-                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-md active:scale-95 transition-all shrink-0 flex items-center justify-center gap-1.5"
-              >
-                <span>تم الإخراج والتصدق بها ✓</span>
-                <span className="text-[10px] bg-slate-950/20 px-1.5 py-0.5 rounded-md">تصفير (0)</span>
-              </button>
-            </div>
-          ) : (
-            <div className="text-[10px] font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span>✅ الصندوق مصفّر حالياً (0 أوقية) وجاهز. لا توجد أي مستحقات متأخرة.</span>
-              <span className="text-emerald-400 font-black">منضبط 🛡️</span>
-            </div>
-          )}
-        </div>
 
         {/* Daily Pace Roadmap breakdown */}
         <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3.5 flex items-center justify-between flex-wrap gap-2 text-xs">

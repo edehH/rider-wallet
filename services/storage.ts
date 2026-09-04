@@ -133,9 +133,34 @@ export const getInitialData = (): AppData => {
       data.vault = consolidateVaultEntries(data.vault);
     }
 
-    // Migration: Ensure objectives, operations, monthlyGoal and vacationFund exist
-    if (!data.objectives) data.objectives = [];
+    // Reset/migrate objectives: Replace all side objectives with the single 10,000 UM 10-day challenge
+    const currentVaultTotal = data.vault ? data.vault.reduce((acc, curr) => acc + curr.amount, 0) : 0;
+    data.objectives = [
+      {
+        id: 'target_10k_10days',
+        title: 'تحدي الـ 10,000 أوقية (10 أيام)',
+        targetAmount: 10000,
+        paidAmount: Math.min(10000, Math.max(0, currentVaultTotal)),
+        isCompleted: currentVaultTotal >= 10000
+      }
+    ];
+
     if (!data.currentDay.operations) data.currentDay.operations = [];
+
+    // Clean up any past penalty/inactivity deductions from vault to restore driver's balance
+    if (data.vault && Array.isArray(data.vault)) {
+      data.vault = data.vault.filter(
+        (entry) =>
+          !(
+            entry.amount < 0 &&
+            (entry.note?.includes('خصم تأخير') ||
+              entry.note?.includes('صندوق الصدقة') ||
+              entry.note?.includes('الانضباط') ||
+              entry.note?.includes('عقوبة'))
+          )
+      );
+    }
+
     if (!data.settings.vaultPin || data.settings.vaultPin === '5492') {
       data.settings.vaultPin = INITIAL_PIN;
     }
@@ -149,12 +174,18 @@ export const getInitialData = (): AppData => {
         enabled: true
       };
     }
-    if (!data.savingsPlan || data.savingsPlan.timeframeMonths === 6) {
+
+    // Ensure savingsPlan is set to the unified 10,000 UM 10-day challenge
+    const hasExistingOps = data.currentDay.operations && data.currentDay.operations.length > 0;
+    const hasExistingVault = data.vault && data.vault.length > 0;
+    if (!data.savingsPlan || data.savingsPlan.targetAmount !== 10000 || !data.savingsPlan.durationDays) {
       data.savingsPlan = {
-        targetAmount: data.savingsPlan?.targetAmount || 100000,
-        timeframeMonths: 3,
-        startDate: currentWorkingDate,
-        title: `خطة تجميع ${(data.savingsPlan?.targetAmount || 100000).toLocaleString()} أوقية (3 أشهر)`,
+        targetAmount: 10000,
+        timeframeMonths: 1,
+        durationDays: 10,
+        startDate: data.savingsPlan?.startDate || currentWorkingDate,
+        challengeStartedAt: data.savingsPlan?.challengeStartedAt || (hasExistingOps || hasExistingVault ? Date.now() : undefined),
+        title: 'تحدي تجميع 10,000 أوقية (10 أيام)',
         dailyIncomeBaseline: 1500
       };
     }
@@ -171,6 +202,9 @@ export const getInitialData = (): AppData => {
         strictCommitmentEnabled: true,
         mysteryInventory: []
       };
+    } else {
+      data.gamification.charityFund = 0;
+      delete data.gamification.lastPenaltyTimestamp;
     }
     return data;
   }
@@ -178,7 +212,15 @@ export const getInitialData = (): AppData => {
   const defaultData: AppData = {
     currentDay: createNewDay(1000, currentWorkingDate),
     vault: [],
-    objectives: [],
+    objectives: [
+      {
+        id: 'target_10k_10days',
+        title: 'تحدي الـ 10,000 أوقية (10 أيام)',
+        targetAmount: 10000,
+        paidAmount: 0,
+        isCompleted: false
+      }
+    ],
     settings: {
       dailyGoal: 1000,
       monthlyGoal: 30000,
@@ -192,10 +234,11 @@ export const getInitialData = (): AppData => {
       enabled: true
     },
     savingsPlan: {
-      targetAmount: 100000,
-      timeframeMonths: 3,
+      targetAmount: 10000,
+      timeframeMonths: 1,
+      durationDays: 10,
       startDate: currentWorkingDate,
-      title: 'خطة تجميع 100,000 أوقية (3 أشهر)',
+      title: 'تحدي تجميع 10,000 أوقية (10 أيام)',
       dailyIncomeBaseline: 1500
     },
     gamification: {

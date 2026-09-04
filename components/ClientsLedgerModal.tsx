@@ -96,7 +96,7 @@ export const ClientsLedgerModal: React.FC<ClientsLedgerModalProps> = ({
     if (!client.phone) return;
     const cleanPhone = client.phone.replace(/[^0-9]/g, '');
     const message = encodeURIComponent(
-      `السلام عليكم ورحمة الله أخي الكريم ${client.name !== client.phone ? client.name : ''} 🌹\nنذكركم بخصوص حساب مشوار / توصيل متبقي بقيمة ${client.unpaidTotalAmount.toLocaleString()} أوقية.\nشكراً جزيلاً لتعاملكم الراقي!`
+      `السلام عليكم ورحمة الله أخي الكريم ${client.name !== client.phone ? client.name : ''} 🌹\nنذكركم بخصوص حساب رحلة توصيل متبقية بقيمة ${client.unpaidTotalAmount.toLocaleString()} أوقية.\nشكراً جزيلاً لتعاملكم الراقي!`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
@@ -124,7 +124,7 @@ export const ClientsLedgerModal: React.FC<ClientsLedgerModalProps> = ({
                 <h2 className="text-xl sm:text-2xl font-black">دفتر الزبائن والمحلات الدائنة</h2>
               </div>
               <p className="text-xs text-blue-200 font-bold mt-1">
-                تتبع ديون المشاوير وتذكير أصحابها بسهولة عبر الهاتف أو الواتساب
+                تتبع ديون الرحلات وتذكير أصحابها بسهولة عبر الهاتف أو الواتساب
               </p>
             </div>
             <button
@@ -147,9 +147,9 @@ export const ClientsLedgerModal: React.FC<ClientsLedgerModalProps> = ({
               </span>
             </div>
             <div className="bg-white/10 border border-white/15 rounded-2xl p-2.5 text-center">
-              <span className="text-[10px] text-blue-200 font-bold block">مشاوير بانتظار التحصيل</span>
+              <span className="text-[10px] text-blue-200 font-bold block">رحلات بانتظار التحصيل</span>
               <span className="text-base sm:text-lg font-black text-white">
-                {totalUnpaidCountAllClients} <span className="text-xs font-bold text-blue-200">مشوار</span>
+                {totalUnpaidCountAllClients} <span className="text-xs font-bold text-blue-200">رحلة</span>
               </span>
             </div>
           </div>
@@ -219,7 +219,7 @@ export const ClientsLedgerModal: React.FC<ClientsLedgerModalProps> = ({
                   : 'لا يوجد أي زبون مطابق للبحث.'}
               </p>
               <p className="text-xs text-slate-400 font-bold mt-1">
-                عند تسجيل المكور، اكتب اسم الزبون أو رقمه لتظهر ديونه وسجله هنا مباشرة.
+                عند تسجيل الرحلة، اكتب اسم الزبون أو رقمه لتظهر ديونه وسجله هنا مباشرة.
               </p>
             </div>
           ) : (
@@ -263,7 +263,7 @@ export const ClientsLedgerModal: React.FC<ClientsLedgerModalProps> = ({
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 font-bold">
-                          <span>{client.totalCoursesCount} مشاوير مسجلة</span>
+                          <span>{client.totalCoursesCount} رحلات مسجلة</span>
                           {client.unpaidCount > 0 ? (
                             <span className="text-amber-700 font-black">
                               • ({client.unpaidCount} غير مسددة)
@@ -336,7 +336,7 @@ export const ClientsLedgerModal: React.FC<ClientsLedgerModalProps> = ({
                             onMarkAllClientPaid(client.name || client.phone || '');
                           }}
                           className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs flex items-center gap-1 transition-all active:scale-95 shadow-2xs"
-                          title="تسديد جميع المشاوير المعلقة لهذا الزبون"
+                          title="تسديد جميع الرحلات المعلقة لهذا الزبون"
                         >
                           <span>تسديد الكل</span>
                           <span>💵</span>
@@ -356,9 +356,9 @@ export const ClientsLedgerModal: React.FC<ClientsLedgerModalProps> = ({
                   {isExpanded && (
                     <div className="p-4 bg-slate-100/70 border-t border-slate-200 space-y-2">
                       <p className="text-xs font-black text-slate-700 mb-2 flex items-center justify-between">
-                        <span>سجل مشاوير {client.name}:</span>
+                        <span>سجل رحلات {client.name}:</span>
                         <span className="text-[10px] text-slate-500 font-normal">
-                          اضغط على زر التسديد لأي مشوار عند الاستلام
+                          اضغط على زر التسديد لأي رحلة عند الاستلام
                         </span>
                       </p>
                       {client.operations.map((op) => {

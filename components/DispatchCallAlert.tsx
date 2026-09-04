@@ -54,10 +54,10 @@ export const DispatchCallAlert: React.FC<DispatchCallAlertProps> = ({
         let notifBody = `مضت ${Math.floor(minutesInactive / 60) || 1} ساعة دون تسجيل كسب. الميدان ينتظرك!`;
         if (currentStage === 2) {
           notifTitle = '⚠️ تحذير المستوى الثاني: مضت ساعتان!';
-          notifBody = 'صوت التحذير يتصاعد.. افتح المحفظة وسجل كورسك للحفاظ على معدل دخلك.';
+          notifBody = 'صوت التحذير يتصاعد.. افتح المحفظة وسجل رحلتك للحفاظ على معدل دخلك.';
         } else if (currentStage === 3) {
           notifTitle = '🚨 نداء استغاثة وخطر: 3 ساعات دون دخل!';
-          notifBody = 'الوقت ينفذ والهدف اليومي في خطر! سجل كورس الآن لإنقاذ اليوم.';
+          notifBody = 'الوقت ينفذ والهدف اليومي في خطر! سجل رحلة الآن لإنقاذ اليوم.';
         }
 
         new Notification(notifTitle, {
@@ -255,7 +255,7 @@ export const DispatchCallAlert: React.FC<DispatchCallAlertProps> = ({
             ? 'الخطر الأكبر: الوقت ينفذ والهدف في خطر!'
             : currentStage === 2
             ? 'مضت ساعتان دون عمل! الصوت يتصاعد لتنبيهك'
-            : 'تذكير نشاط الميدان: ابدأ مكوراً جديداً'}
+            : 'تذكير نشاط الميدان: ابدأ رحلة جديدة'}
         </h3>
 
         <div className="inline-flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-xl text-xs font-bold text-gray-200 mt-2 mb-3 border border-white/10">
@@ -322,7 +322,7 @@ export const DispatchCallAlert: React.FC<DispatchCallAlertProps> = ({
             />
           </div>
           <p className="text-[10px] font-bold text-gray-400">
-            * اكتب وجهة الكورس مباشرة واضغط الزر بالأسفل لإدخال المبلغ فوراً.
+            * اكتب وجهة الرحلة مباشرة واضغط الزر بالأسفل لإدخال المبلغ فوراً.
           </p>
         </form>
 
@@ -340,7 +340,7 @@ export const DispatchCallAlert: React.FC<DispatchCallAlertProps> = ({
           >
             <span className="text-xl">🚕</span>
             <span>
-              {currentStage === 3 ? 'إنقاذ اليوم وإدخال كورس الآن! 🚨' : 'تسجيل كورس وإدخال الكسب فوراً'}
+              {currentStage === 3 ? 'إنقاذ اليوم وتسجيل رحلة الآن! 🚨' : 'تسجيل رحلة وإدخال الكسب فوراً'}
             </span>
           </button>
 

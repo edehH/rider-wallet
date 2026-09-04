@@ -12,10 +12,8 @@ interface MysteryMilestoneModalProps {
   isOpen: boolean;
   station?: StationInfo | null;
   card?: MysteryCard | null;
-  mode: 'station_unlocked' | 'chest_opened' | 'lucky_bonus' | 'penalty_notice';
+  mode: 'station_unlocked' | 'chest_opened' | 'lucky_bonus';
   bonusXp?: number;
-  penaltyAmount?: number;
-  penaltyReason?: string;
   onClose: () => void;
   onOpenChest?: (stationNumber: number) => void;
 }
@@ -61,8 +59,6 @@ export const MysteryMilestoneModal: React.FC<MysteryMilestoneModalProps> = ({
   card: propCard,
   mode,
   bonusXp,
-  penaltyAmount,
-  penaltyReason,
   onClose,
   onOpenChest
 }) => {
@@ -76,7 +72,7 @@ export const MysteryMilestoneModal: React.FC<MysteryMilestoneModalProps> = ({
   const animFrameIdRef = useRef<number | null>(null);
 
   // Fallback default station if undefined
-  const defaultStation = getStations(100000)[0];
+  const defaultStation = getStations(10000)[0];
   const activeStation = propStation || defaultStation;
 
   // Visual Palette and 3D properties according to active station
@@ -468,7 +464,7 @@ export const MysteryMilestoneModal: React.FC<MysteryMilestoneModalProps> = ({
         )}
 
         {/* ---------------- STATE 1: UNOPENED CHEST (المرحلة المغلقة بانتظار الفتح) ---------------- */}
-        {chestState === 'closed' && mode !== 'penalty_notice' && (
+        {chestState === 'closed' && (
           <div className="animate-scaleUp">
             {/* 3D Floating Stage Badge */}
             <div className="relative inline-block mb-3">
@@ -528,7 +524,7 @@ export const MysteryMilestoneModal: React.FC<MysteryMilestoneModalProps> = ({
         )}
 
         {/* ---------------- STATE 2: EXPLODING / REVEALED (الانفجار والمفاجأة والعبارة الملهمة) ---------------- */}
-        {(chestState === 'exploding' || chestState === 'revealed') && mode !== 'penalty_notice' && (
+        {(chestState === 'exploding' || chestState === 'revealed') && (
           <div className="animate-scaleUp">
             {/* Rarity & Stage Header */}
             <div className="inline-block mb-3">
@@ -606,43 +602,6 @@ export const MysteryMilestoneModal: React.FC<MysteryMilestoneModalProps> = ({
             >
               <span>استلام المكافأة والمتابعة للمرحلة التالية</span>
               <span>🚀</span>
-            </button>
-          </div>
-        )}
-
-        {/* ---------------- STATE 3: PENALTY NOTICE (ميثاق الالتزام والصدقة) ---------------- */}
-        {mode === 'penalty_notice' && (
-          <div className="animate-scaleUp">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 border border-rose-400/40 text-3xl shadow-lg mb-4">
-              ⚖️
-            </div>
-
-            <span className="text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-3 py-1 rounded-full uppercase tracking-wider block w-max mx-auto mb-2">
-              تنبيه ميثاق الالتزام الذاتي
-            </span>
-
-            <h2 className="text-2xl font-black text-white mb-2 tracking-tight">
-              خصم تأديبي لصالح صندوق الصدقة 🛡️
-            </h2>
-
-            <p className="text-rose-300 font-bold text-sm mb-4">
-              المبلغ المخصوم: {(penaltyAmount || 150).toLocaleString()} أوقية
-            </p>
-
-            <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 mb-6 text-gray-200 text-xs font-bold leading-relaxed text-right">
-              <p className="mb-2">
-                {penaltyReason || 'انقضت أكثر من 3 أيام دون أي حركة ادخار أو ترحيل أرباح للخزنة.'}
-              </p>
-              <p className="text-amber-300 text-[11px]">
-                💡 تم تحويل المبلغ تلقائياً إلى <b>صندوق الصدقة والبركة</b> لتطهير المال وتجديد النية والعزيمة للعودة بقوة إلى الميدان!
-              </p>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black py-4 rounded-2xl text-sm shadow-xl active:scale-95 transition-all"
-            >
-              فهمت، والعودة للالتزام فوراً 💪
             </button>
           </div>
         )}

@@ -15,6 +15,8 @@ import { HonorShowcaseModal } from './components/HonorShowcaseModal';
 import { ClientsLedgerModal } from './components/ClientsLedgerModal';
 import { OperationToast, OperationFeedback } from './components/OperationToast';
 import { DispatchCallAlert, AlertStage } from './components/DispatchCallAlert';
+import { ObjectivesChallengeModal } from './components/ObjectivesChallengeModal';
+import { calculateTenDayChallenge, TEN_DAY_TARGET } from './data/tenDayChallenge';
 import { getStations, generateMysteryCardForStation, calculateDriverLevel, StationInfo } from './data/gamificationData';
 import {
   playCoinChime,
@@ -33,10 +35,12 @@ import {
 const App: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
   const [activeInput, setActiveInput] = useState<{ 
-    type: keyof DailyStats | 'pin' | 'goal' | 'monthlyGoal' | 'tempEarnings' | 'editOperation' | 'newObjectiveAmount' | 'payObjective' | 'withdrawVault' | 'depositVault' | 'editObjectiveAmount', 
+    type: keyof DailyStats | 'pin' | 'goal' | 'monthlyGoal' | 'tempEarnings' | 'coursePercentage' | 'editOperation' | 'editTripAmount' | 'editTripPercentage' | 'newObjectiveAmount' | 'payObjective' | 'withdrawVault' | 'depositVault' | 'editObjectiveAmount', 
     title: string,
     operationId?: string,
-    objectiveId?: string
+    objectiveId?: string,
+    pendingAmount?: number,
+    currentPct?: number,
   } | null>(null);
   
   const [inputValue, setInputValue] = useState('');
@@ -83,12 +87,10 @@ const App: React.FC = () => {
   // Gamified Mystery Modal State
   const [mysteryModal, setMysteryModal] = useState<{
     isOpen: boolean;
-    mode: 'station_unlocked' | 'chest_opened' | 'lucky_bonus' | 'penalty_notice';
+    mode: 'station_unlocked' | 'chest_opened' | 'lucky_bonus';
     station?: StationInfo | null;
     card?: MysteryCard | null;
     bonusXp?: number;
-    penaltyAmount?: number;
-    penaltyReason?: string;
   }>({
     isOpen: false,
     mode: 'station_unlocked',
@@ -104,9 +106,19 @@ const App: React.FC = () => {
   const [clientPhone, setClientPhone] = useState('');
   const [isCoursePaid, setIsCoursePaid] = useState<boolean>(false);
   const [showMissingClientError, setShowMissingClientError] = useState<boolean>(false);
+  const [pendingTripDetails, setPendingTripDetails] = useState<{
+    amount: number;
+    clientName?: string;
+    clientPhone?: string;
+    isPaid: boolean;
+    courseTitle?: string;
+    fromLocation?: string;
+    toLocation?: string;
+  } | null>(null);
 
   useEffect(() => {
-    setData(getInitialData());
+    const initData = getInitialData();
+    setData(initData);
 
     // Native app-like standard notification permission request on launch/first interaction
     if ('Notification' in window && Notification.permission === 'default') {
@@ -164,47 +176,6 @@ const App: React.FC = () => {
       const thresholdMinutes = data.settings.inactivityIntervalMinutes || 60;
 
       if (elapsedMinutes >= thresholdMinutes) {
-        // Silent Inactivity Penalty: Accumulate 150 into charity fund quietly every delay cycle (60 min)
-        const nowTime = Date.now();
-        const lastPenalty = data.gamification?.lastPenaltyTimestamp || 0;
-        if (nowTime - lastPenalty >= 60 * 60 * 1000) {
-          const penaltyAmount = 150;
-          const updatedGamification = {
-            ...(data.gamification || {
-              streakDays: 1,
-              lastStreakDate: data.currentDay.date,
-              totalXp: 500,
-              openedChests: [],
-              celebratedMilestones: [],
-              charityFund: 0,
-              unlockedTitles: ['سائق واعد 🌱'],
-              selectedTitle: 'سائق واعد 🌱',
-              strictCommitmentEnabled: true,
-              mysteryInventory: []
-            }),
-            charityFund: ((data.gamification?.charityFund || 0) + penaltyAmount),
-            lastPenaltyTimestamp: nowTime
-          };
-
-          const updatedVault = [
-            ...data.vault,
-            {
-              date: getWorkingDate(),
-              amount: -penaltyAmount,
-              note: 'خصم تأخير العمل (صندوق الصدقة والانضباط)'
-            }
-          ];
-
-          const updatedData: AppData = {
-            ...data,
-            gamification: updatedGamification,
-            vault: updatedVault
-          };
-
-          setData(updatedData);
-          saveData(updatedData);
-        }
-
         if (!showDispatchCall && !activeInput && !showVault && !showObjectives) {
           setMinutesInactive(elapsedMinutes);
           setForcedAlertStage(undefined);
@@ -238,8 +209,27 @@ const App: React.FC = () => {
     });
   }, [data, activeInput, courseTitle, fromLocation, toLocation]);
 
+  const ensureChallengeStarted = useCallback((newData: AppData) => {
+    if (!newData.savingsPlan) {
+      newData.savingsPlan = {
+        targetAmount: 10000,
+        timeframeMonths: 1,
+        durationDays: 10,
+        startDate: getWorkingDate(),
+        title: 'تحدي تجميع 10,000 أوقية (10 أيام)',
+        dailyIncomeBaseline: 1500,
+        challengeStartedAt: Date.now()
+      };
+    } else if (!newData.savingsPlan.challengeStartedAt) {
+      newData.savingsPlan.challengeStartedAt = Date.now();
+      newData.savingsPlan.startDate = getWorkingDate();
+      newData.savingsPlan.durationDays = 10;
+      newData.savingsPlan.targetAmount = 10000;
+    }
+  }, []);
+
   const triggerStationCelebration = useCallback((newData: AppData, newTotal: number) => {
-    const target = newData.savingsPlan?.targetAmount || 100000;
+    const target = newData.savingsPlan?.targetAmount || 10000;
     const stations = getStations(target);
     
     if (!newData.gamification) {
@@ -319,7 +309,7 @@ const App: React.FC = () => {
       newData.gamification.openedChests.push(stationNumber);
     }
 
-    const target = newData.savingsPlan?.targetAmount || 100000;
+    const target = newData.savingsPlan?.targetAmount || 10000;
     const stations = getStations(target);
     const station = stations.find(s => s.stationNumber === stationNumber) || stations[0];
 
@@ -424,70 +414,92 @@ const App: React.FC = () => {
       const newTotalSaved = Math.max(0, newData.vault.reduce((acc, curr) => acc + curr.amount, 0));
       triggerStationCelebration(newData, newTotalSaved);
     } else if (activeInput.type === 'tempEarnings') {
-      // Mandatory Check: Client Name OR Phone MUST be provided
-      const trimmedClientName = clientName.trim();
-      const trimmedClientPhone = clientPhone.trim();
-
-      if (!trimmedClientName && !trimmedClientPhone) {
-        setShowMissingClientError(true);
+      if (numValue <= 0) {
         playUndoSound();
         return;
       }
 
+      // Mandatory Check ONLY for UNPAID courses (!isCoursePaid) so driver can follow up on debt
+      if (!isCoursePaid) {
+        const trimmedClientName = clientName.trim();
+        const trimmedClientPhone = clientPhone.trim();
+
+        if (!trimmedClientName && !trimmedClientPhone) {
+          setShowMissingClientError(true);
+          playUndoSound();
+          return;
+        }
+      }
+
       setShowMissingClientError(false);
-      setTempEarningsValue(numValue);
+
+      // Save trip details and immediately transition to entering the deduction amount
+      setPendingTripDetails({
+        amount: numValue,
+        clientName: clientName.trim(),
+        clientPhone: clientPhone.trim(),
+        isPaid: isCoursePaid,
+        courseTitle: courseTitle.trim(),
+        fromLocation: fromLocation.trim(),
+        toLocation: toLocation.trim()
+      });
       setInputValue('');
+      setActiveInput({
+        type: 'coursePercentage',
+        title: 'كم الخصم؟ (أوقية)',
+        pendingAmount: numValue
+      });
       playKeypadBeep('✓');
-      setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك من هذا الكسب' });
       return;
-    } else if (activeInput.type === 'ownerShare' && tempEarningsValue !== null) {
-      newData.currentDay.earnings += tempEarningsValue;
-      newData.currentDay.ownerShare += numValue;
-      newData.lastEarningTimestamp = Date.now(); // update inactivity timestamp
-      
+    } else if (activeInput.type === 'coursePercentage') {
+      const deductionAmount = parseFloat(inputValue) || 0;
+      const tripAmt = pendingTripDetails?.amount || activeInput.pendingAmount || 0;
+      const effectiveOwnerShare = Math.max(0, deductionAmount);
+      const netAmount = Math.max(0, tripAmt - effectiveOwnerShare);
+
+      newData.currentDay.earnings += tripAmt;
+      if (effectiveOwnerShare > 0) {
+        newData.currentDay.ownerShare += effectiveOwnerShare;
+      }
+      newData.lastEarningTimestamp = Date.now();
+
       const courseCount = newData.currentDay.operations.filter(o => o.type === 'earnings').length + 1;
-      const clientIdentifier = clientName.trim() || clientPhone.trim();
-      const finalCourseTitle = courseTitle.trim() || `${clientIdentifier} • مكور #${courseCount}`;
-      const finalLabel = `كسب (${finalCourseTitle})`;
+      const clientIdentifier = pendingTripDetails?.clientName || pendingTripDetails?.clientPhone;
+      const fallbackTitle = (pendingTripDetails?.fromLocation && pendingTripDetails?.toLocation)
+        ? `${pendingTripDetails.fromLocation} ➔ ${pendingTripDetails.toLocation}`
+        : `مكسب #${courseCount}`;
+      const finalCourseTitle = pendingTripDetails?.courseTitle || (clientIdentifier ? `${clientIdentifier} • مكسب #${courseCount}` : fallbackTitle);
+      const finalLabel = `مكسب (${finalCourseTitle})`;
 
       const newOpE: Operation = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'earnings',
-        amount: tempEarningsValue,
+        amount: tripAmt,
+        ownerShareAmount: effectiveOwnerShare > 0 ? effectiveOwnerShare : undefined,
+        netAmount: netAmount,
         label: finalLabel,
         courseTitle: finalCourseTitle,
-        fromLocation: fromLocation.trim() || undefined,
-        toLocation: toLocation.trim() || undefined,
-        clientName: clientName.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        isPaid: isCoursePaid, // default false (unpaid) or true if toggled to prepaid
-        paidTimestamp: isCoursePaid ? new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : undefined,
+        fromLocation: pendingTripDetails?.fromLocation || undefined,
+        toLocation: pendingTripDetails?.toLocation || undefined,
+        clientName: pendingTripDetails?.clientName || undefined,
+        clientPhone: pendingTripDetails?.clientPhone || undefined,
+        isPaid: pendingTripDetails?.isPaid ?? false,
+        paidTimestamp: pendingTripDetails?.isPaid ? new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : undefined,
         timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
       };
-      const newOpS: Operation = {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'ownerShare',
-        amount: numValue,
-        label: `نسبة المالك (${finalCourseTitle})`,
-        courseTitle: finalCourseTitle,
-        clientName: clientName.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
-      };
-      newData.currentDay.operations.push(newOpE, newOpS);
+      newData.currentDay.operations.unshift(newOpE);
 
-      // Play dedicated earning cash sound and show identity toast
       playEarningCashSound();
       triggerFeedback({
         id: Math.random().toString(),
         type: 'earning',
-        title: `تم تسجيل مشوار: ${clientIdentifier} 💰`,
-        subtitle: `كسب: ${tempEarningsValue.toLocaleString()} أوقية (${isCoursePaid ? 'تم الدفع مسبقاً ✅' : 'غير مدفوع ⏳'}) | نسبة المالك: ${numValue.toLocaleString()} أوقية`,
-        amount: tempEarningsValue,
-        icon: isCoursePaid ? '✅' : '⏳'
+        title: clientIdentifier ? `تم تسجيل مكسب: ${clientIdentifier} 💰` : 'تم تسجيل مكسب جديد 💰',
+        subtitle: `المبلغ: ${tripAmt.toLocaleString()} أوقية • الخصم: ${effectiveOwnerShare.toLocaleString()} أوقية • الصافي: ${netAmount.toLocaleString()} أوقية`,
+        amount: tripAmt,
+        icon: pendingTripDetails?.isPaid ? '✅' : '⏳'
       });
 
-      setTempEarningsValue(null);
+      setPendingTripDetails(null);
       setCourseTitle('');
       setFromLocation('');
       setToLocation('');
@@ -495,24 +507,89 @@ const App: React.FC = () => {
       setClientPhone('');
       setIsCoursePaid(false);
       setShowMissingClientError(false);
-    } else if (activeInput.type === 'editOperation' && activeInput.operationId) {
+      ensureChallengeStarted(newData);
+      setData(newData);
+      saveData(newData);
+      setActiveInput(null);
+      setInputValue('');
+      return;
+    } else if (activeInput.type === 'editTripAmount' && activeInput.operationId) {
+      if (numValue <= 0) {
+        playUndoSound();
+        return;
+      }
+      const currentShare = activeInput.currentPct || 0;
+      setInputValue(currentShare > 0 ? currentShare.toString() : '');
+      setActiveInput({
+        type: 'editTripPercentage',
+        title: 'كم الخصم؟ (أوقية)',
+        operationId: activeInput.operationId,
+        pendingAmount: numValue,
+        currentPct: currentShare
+      });
+      playKeypadBeep('✓');
+      return;
+    } else if (activeInput.type === 'editTripPercentage' && activeInput.operationId) {
+      const deductionAmount = parseFloat(inputValue) || 0;
+      const newTripAmt = activeInput.pendingAmount || 0;
       const opIndex = newData.currentDay.operations.findIndex(o => o.id === activeInput.operationId);
       if (opIndex > -1) {
         const op = newData.currentDay.operations[opIndex];
-        const diff = numValue - op.amount;
-        if (op.type === 'earnings') newData.currentDay.earnings += diff;
-        if (op.type === 'ownerShare') newData.currentDay.ownerShare += diff;
-        if (op.type === 'fuel') newData.currentDay.fuel += diff;
-        if (op.type === 'purchases') newData.currentDay.purchases += diff;
-        if (op.type === 'objectivePayment') newData.currentDay.objectivePayments += diff;
-        op.amount = numValue;
+        const oldAmount = op.amount || 0;
+        const oldShare = op.ownerShareAmount || 0;
+        const newShare = Math.max(0, deductionAmount);
+
+        newData.currentDay.earnings += (newTripAmt - oldAmount);
+        newData.currentDay.ownerShare = Math.max(0, newData.currentDay.ownerShare + (newShare - oldShare));
+
+        op.amount = newTripAmt;
+        op.ownerShareAmount = newShare > 0 ? newShare : undefined;
+        op.netAmount = Math.max(0, newTripAmt - newShare);
 
         playKeypadBeep('✓');
         triggerFeedback({
           id: Math.random().toString(),
           type: 'info',
-          title: 'تم تعديل العملية بنجاح ✏️',
-          subtitle: op.label,
+          title: 'تم تعديل المكسب بنجاح ✏️',
+          subtitle: `المبلغ: ${newTripAmt.toLocaleString()} أوقية • الخصم: ${newShare.toLocaleString()} أوقية • الصافي: ${op.netAmount.toLocaleString()} أوقية`,
+          amount: newTripAmt,
+          icon: '✏️'
+        });
+      }
+      setData(newData);
+      saveData(newData);
+      setActiveInput(null);
+      setInputValue('');
+      return;
+    } else if (activeInput.type === 'editOperation' && activeInput.operationId) {
+      const opIndex = newData.currentDay.operations.findIndex(o => o.id === activeInput.operationId);
+      if (opIndex > -1) {
+        const op = newData.currentDay.operations[opIndex];
+        const diff = numValue - op.amount;
+        if (op.type === 'earnings') {
+          newData.currentDay.earnings += diff;
+          op.amount = numValue;
+          op.netAmount = Math.max(0, op.amount - (op.ownerShareAmount || 0));
+        } else if (op.type === 'ownerShare') {
+          newData.currentDay.ownerShare += diff;
+          op.amount = numValue;
+        } else if (op.type === 'fuel') {
+          newData.currentDay.fuel += diff;
+          op.amount = numValue;
+        } else if (op.type === 'purchases') {
+          newData.currentDay.purchases += diff;
+          op.amount = numValue;
+        } else if (op.type === 'objectivePayment') {
+          newData.currentDay.objectivePayments += diff;
+          op.amount = numValue;
+        }
+
+        playKeypadBeep('✓');
+        triggerFeedback({
+          id: Math.random().toString(),
+          type: 'info',
+          title: 'تم تعديل المبلغ بنجاح ✏️',
+          subtitle: op.courseTitle || op.label,
           amount: numValue,
           icon: '✏️'
         });
@@ -600,11 +677,27 @@ const App: React.FC = () => {
       });
     }
 
+    ensureChallengeStarted(newData);
     setData(newData);
     saveData(newData);
     setActiveInput(null);
     setInputValue('');
-  }, [data, activeInput, inputValue, tempEarningsValue, objectiveTitle, triggerStationCelebration, triggerFeedback]);
+  }, [
+    data,
+    activeInput,
+    inputValue,
+    isCoursePaid,
+    clientName,
+    clientPhone,
+    courseTitle,
+    fromLocation,
+    toLocation,
+    pendingTripDetails,
+    objectiveTitle,
+    triggerStationCelebration,
+    triggerFeedback,
+    ensureChallengeStarted
+  ]);
 
   const deleteObjective = (id: string) => {
     if (!data) return;
@@ -629,7 +722,12 @@ const App: React.FC = () => {
     const opIndex = newData.currentDay.operations.findIndex(o => o.id === id);
     if (opIndex > -1) {
       const op = newData.currentDay.operations[opIndex];
-      if (op.type === 'earnings') newData.currentDay.earnings -= op.amount;
+      if (op.type === 'earnings') {
+        newData.currentDay.earnings -= op.amount;
+        if (op.ownerShareAmount) {
+          newData.currentDay.ownerShare = Math.max(0, newData.currentDay.ownerShare - op.ownerShareAmount);
+        }
+      }
       if (op.type === 'ownerShare') newData.currentDay.ownerShare -= op.amount;
       if (op.type === 'fuel') newData.currentDay.fuel -= op.amount;
       if (op.type === 'purchases') newData.currentDay.purchases -= op.amount;
@@ -641,7 +739,7 @@ const App: React.FC = () => {
         id: Math.random().toString(),
         type: 'delete',
         title: 'تم حذف العملية 🗑️',
-        subtitle: `${op.label} (${op.amount.toLocaleString()} أوقية)`,
+        subtitle: `${op.courseTitle || op.label} (${op.amount.toLocaleString()} أوقية)`,
         icon: '🗑️'
       });
 
@@ -758,6 +856,7 @@ const App: React.FC = () => {
     setActiveInput(null);
     setInputValue('');
     setTempEarningsValue(null);
+    setPendingTripDetails(null);
     setCourseTitle('');
     setFromLocation('');
     setToLocation('');
@@ -797,7 +896,7 @@ const App: React.FC = () => {
       triggerFeedback({
         id: Math.random().toString(),
         type: 'earning',
-        title: `تم تسديد جميع المشاوير (${updatedCount}) ✅`,
+        title: `تم تسديد جميع الرحلات (${updatedCount}) ✅`,
         subtitle: `المبلغ المسدد: ${updatedTotal.toLocaleString()} أوقية لـ ${clientIdentifier}`,
         amount: updatedTotal,
         icon: '💵'
@@ -825,7 +924,7 @@ const App: React.FC = () => {
       triggerFeedback({
         id: Math.random().toString(),
         type: 'earning',
-        title: 'تم تسديد المشوار بنجاح ✅',
+        title: 'تم تسديد المكسب بنجاح ✅',
         subtitle: `${op.courseTitle || op.label} • ${op.amount.toLocaleString()} أوقية`,
         amount: op.amount,
         icon: '💵'
@@ -835,7 +934,7 @@ const App: React.FC = () => {
       triggerFeedback({
         id: Math.random().toString(),
         type: 'info',
-        title: 'تم تعيين المشوار كغير مدفوع ⏳',
+        title: 'تم تعيين المكسب كغير مدفوع ⏳',
         subtitle: `${op.courseTitle || op.label}`,
         icon: '⏳'
       });
@@ -947,7 +1046,7 @@ const App: React.FC = () => {
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-black text-amber-950">
-                  {unpaidEarningsList.length === 1 ? 'مشوار واحد غير مدفوع' : `${unpaidEarningsList.length} مشاوير غير مسددة`}
+                  {unpaidEarningsList.length === 1 ? 'مكسب واحد غير مدفوع' : `${unpaidEarningsList.length} مكاسب غير مسددة`}
                 </span>
                 <span className="text-[11px] font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded-md font-mono" dir="ltr">
                   {unpaidTotalAmount.toLocaleString()} أوقية
@@ -996,65 +1095,6 @@ const App: React.FC = () => {
 
         <p className="text-center text-[0.65rem] font-black text-gray-400 mt-3 uppercase tracking-widest">اضغط لتعديل الهدف</p>
       </div>
-
-      {/* 3-Month Wealth Target Quick Bar with Dynamic Days Deduction */}
-      {(() => {
-        const totalSavedVault = Math.max(0, data.vault.reduce((acc, curr) => acc + curr.amount, 0) + Math.max(0, unsettledBalance));
-        const targetAmount = data.savingsPlan?.targetAmount || 100000;
-        const remainingMoney = Math.max(0, targetAmount - totalSavedVault);
-        const planDays = (data.savingsPlan?.timeframeMonths || 3) * 30;
-        const dailyQuota = Math.max(1, Math.round(targetAmount / planDays));
-        const daysLeft = Math.max(0, Math.ceil(remainingMoney / dailyQuota));
-        const daysShortened = Math.min(planDays, Math.floor(totalSavedVault / dailyQuota));
-
-        const formatQuickDuration = (days: number) => {
-          if (days <= 0) return 'اكتمل الهدف 🏆';
-          const m = Math.floor(days / 30);
-          const d = days % 30;
-          if (m > 0 && d > 0) return `${m} ش و ${d} يوم (${days} يوماً)`;
-          if (m > 0 && d === 0) return `${m} ${m === 1 ? 'شهر' : m === 2 ? 'شهران' : 'أشهر'} (${days} يوماً)`;
-          return `${days} يوم عمل`;
-        };
-
-        return (
-          <div 
-            onClick={() => { setShowVault(true); setVaultUnlocked(false); setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' }); }}
-            className="bg-gradient-to-r from-amber-500/10 via-yellow-500/15 to-emerald-500/10 border-2 border-yellow-400/50 rounded-3xl p-3.5 mb-6 flex justify-between items-center cursor-pointer active:scale-98 transition-all z-10 shadow-xs hover:border-yellow-400"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-yellow-400 text-yellow-950 flex items-center justify-center text-lg font-black shadow-sm shrink-0">
-                🏦
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-black text-amber-900 bg-yellow-300/80 px-2 py-0.5 rounded-md">
-                    {data.savingsPlan?.title || 'خطة تجميع 100,000 أوقية (3 أشهر)'}
-                  </span>
-                  <span className="text-[10px] font-black text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">
-                    ⏳ باقي: {formatQuickDuration(daysLeft)}
-                  </span>
-                </div>
-                <div className="text-xs font-black text-gray-900 mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span>المتبقي:</span>
-                  <span className="text-amber-700 font-black text-sm">
-                    {remainingMoney.toLocaleString()} أوقية
-                  </span>
-                  {daysShortened > 0 && (
-                    <span className="text-[10px] text-emerald-700 font-black bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      ⚡ اختصرت {daysShortened} يوم
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="text-left shrink-0">
-              <span className="text-xs font-black text-emerald-800 bg-emerald-100/90 px-3 py-1.5 rounded-xl block border border-emerald-200 shadow-2xs">
-                {totalSavedVault.toLocaleString()} مدخر ↗
-              </span>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Net Balance */}
       <div className="bg-[#1e293b] rounded-[3rem] p-7 text-white mb-6 shadow-2xl border-b-[12px] border-[#0f172a] relative overflow-hidden z-10">
@@ -1121,12 +1161,42 @@ const App: React.FC = () => {
 
       {/* Action Grid (6 Buttons) with Neon Glows */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-6 flex-grow mb-4 relative">
-        <ActionButton label="الكسب" emoji="💰" color="bg-green-50" textColor="text-green-900" borderColor="border-green-400" glowColor="rgba(34, 197, 94, 0.4)" value={data.currentDay.earnings} onClick={() => setActiveInput({ type: 'tempEarnings', title: 'إضافة مبلغ الكسب' })} />
+        <ActionButton
+          label="مكسب"
+          emoji="💰"
+          color="bg-green-50"
+          textColor="text-green-900"
+          borderColor="border-green-400"
+          glowColor="rgba(34, 197, 94, 0.4)"
+          value={data.currentDay.earnings}
+          onClick={() => {
+            setIsCoursePaid(false);
+            setShowMissingClientError(false);
+            setActiveInput({ type: 'tempEarnings', title: 'تسجيل مكسب' });
+          }}
+        />
         <ActionButton label="نسبة المالك" emoji="🔑" color="bg-red-50" textColor="text-red-900" borderColor="border-red-400" glowColor="rgba(239, 68, 68, 0.4)" value={data.currentDay.ownerShare} onClick={() => setActiveInput({ type: 'ownerShare', title: 'خصم نسبة المالك' })} />
         <ActionButton label="الوقود" emoji="⛽" color="bg-orange-50" textColor="text-orange-900" borderColor="border-orange-400" glowColor="rgba(249, 115, 22, 0.4)" value={data.currentDay.fuel} onClick={() => setActiveInput({ type: 'fuel', title: 'خصم مصاريف الوقود' })} />
         <ActionButton label="المشتريات" emoji="🛒" color="bg-indigo-50" textColor="text-indigo-900" borderColor="border-indigo-400" glowColor="rgba(99, 102, 241, 0.4)" value={data.currentDay.purchases} onClick={() => setActiveInput({ type: 'purchases', title: 'خصم المشتريات اليومية' })} />
         <ActionButton label="العمليات" emoji="📋" color="bg-gray-50" textColor="text-gray-900" borderColor="border-gray-400" glowColor="rgba(107, 114, 128, 0.4)" value={data.currentDay.operations.length} onClick={() => setShowOpsList(true)} labelSuffix="عملية" />
-        <ActionButton label="الأهداف" emoji="🎯" color="bg-blue-50" textColor="text-blue-900" borderColor="border-blue-400" glowColor="rgba(59, 130, 246, 0.4)" value={data.objectives.length} onClick={() => setShowObjectives(true)} labelSuffix="هدف" />
+        {(() => {
+          const ch = calculateTenDayChallenge(data);
+          const isBehind = ch.status === 'behind';
+          const isAhead = ch.status === 'ahead';
+          return (
+            <ActionButton 
+              label="تحدي الـ 10 آلاف" 
+              emoji="🎯" 
+              color={isAhead ? "bg-emerald-50" : isBehind ? "bg-rose-50" : "bg-blue-50"} 
+              textColor={isAhead ? "text-emerald-900" : isBehind ? "text-rose-900" : "text-blue-900"} 
+              borderColor={isAhead ? "border-emerald-400" : isBehind ? "border-rose-400" : "border-blue-400"} 
+              glowColor={isAhead ? "rgba(16, 185, 129, 0.4)" : isBehind ? "rgba(244, 63, 94, 0.4)" : "rgba(59, 130, 246, 0.4)"} 
+              value={ch.actualSaved} 
+              onClick={() => setShowObjectives(true)} 
+              labelSuffix="أوقية" 
+            />
+          );
+        })()}
       </div>
 
       {/* Overlays */}
@@ -1141,6 +1211,8 @@ const App: React.FC = () => {
               onConfirm={handleUpdateValue}
               onCancel={handleCancel}
               isCourseInput={activeInput.type === 'tempEarnings'}
+              isPercentageInput={activeInput.type === 'coursePercentage' || activeInput.type === 'editTripPercentage'}
+              pendingAmount={activeInput.pendingAmount || pendingTripDetails?.amount}
               courseTitle={courseTitle}
               setCourseTitle={setCourseTitle}
               fromLocation={fromLocation}
@@ -1148,12 +1220,21 @@ const App: React.FC = () => {
               toLocation={toLocation}
               setToLocation={setToLocation}
               clientName={clientName}
-              setClientName={setClientName}
+              setClientName={(v) => {
+                setClientName(v);
+                if (v.trim()) setShowMissingClientError(false);
+              }}
               clientPhone={clientPhone}
-              setClientPhone={setClientPhone}
+              setClientPhone={(v) => {
+                setClientPhone(v);
+                if (v.trim()) setShowMissingClientError(false);
+              }}
               isDuplicateCourse={isDuplicateCourse}
               isPaid={isCoursePaid}
-              setIsPaid={setIsCoursePaid}
+              setIsPaid={(v) => {
+                setIsCoursePaid(v);
+                if (v) setShowMissingClientError(false);
+              }}
               showMissingClientError={showMissingClientError}
             />
           </div>
@@ -1166,12 +1247,12 @@ const App: React.FC = () => {
           <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-black text-gray-900 flex items-center gap-2">
-                <span>العمليات والمكورات اليومية</span>
+                <span>العمليات والرحلات اليومية</span>
                 <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-black">
                   {data.currentDay.operations.length}
                 </span>
               </h2>
-              <p className="text-xs text-gray-500 font-bold mt-1">سجل تفصيلي لجميع المشاوير والنفقات وحالة التحصيل والدفع</p>
+              <p className="text-xs text-gray-500 font-bold mt-1">سجل تفصيلي لجميع الرحلات والنفقات وحالة التحصيل والدفع</p>
             </div>
             <button onClick={() => setShowOpsList(false)} className="p-2.5 sm:p-3 bg-red-100 hover:bg-red-200 rounded-2xl font-black text-red-700 px-5 text-sm transition-all active:scale-95">
               إغلاق ✕
@@ -1185,7 +1266,7 @@ const App: React.FC = () => {
                 <span className="text-2xl">⏳</span>
                 <div>
                   <p className="font-black text-xs sm:text-sm text-amber-950">
-                    لديك {unpaidEarningsList.length} مشوار بانتظار التحصيل (غير مدفوع)
+                    لديك {unpaidEarningsList.length} مكسب بانتظار التحصيل (غير مدفوع)
                   </p>
                   <p className="text-[11px] text-amber-800 font-bold mt-0.5">
                     المجموع المتبقي: <span className="font-mono font-black">{unpaidTotalAmount.toLocaleString()}</span> أوقية • اضغط زر «دفع 💵» عند الاستلام
@@ -1199,7 +1280,7 @@ const App: React.FC = () => {
             {data.currentDay.operations.length === 0 && (
               <div className="text-center text-gray-400 py-20 font-bold bg-white rounded-3xl border border-gray-100 p-8">
                 <span className="text-4xl block mb-2">📋</span>
-                لم تقم بتسجيل أي مكور أو عملية اليوم
+                لم تقم بتسجيل أي مكسب أو عملية اليوم
               </div>
             )}
 
@@ -1209,112 +1290,125 @@ const App: React.FC = () => {
               const isUnpaidEarning = isEarning && op.isPaid === false;
               const isPaidEarning = isEarning && op.isPaid === true;
 
-              return (
-                <div 
-                  key={op.id} 
-                  className={`bg-white p-4 sm:p-5 rounded-3xl border-2 transition-all shadow-xs ${
-                    isUnpaidEarning 
-                      ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400' 
-                      : 'border-gray-100 hover:border-blue-100'
-                  } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`w-2.5 h-2.5 rounded-full ${isEarning ? (isUnpaidEarning ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-rose-500'}`} />
-                      <p className="font-black text-gray-800 text-sm sm:text-base">{op.label}</p>
-                      {op.courseTitle && (
-                        <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
-                          🚖 {op.courseTitle}
+              if (isEarning) {
+                const ownerDeduction = op.ownerShareAmount || 0;
+                const netDriverAmount = op.netAmount ?? Math.max(0, op.amount - ownerDeduction);
+
+                return (
+                  <div 
+                    key={op.id} 
+                    className={`bg-white p-4 sm:p-5 rounded-3xl border-2 transition-all shadow-xs ${
+                      isUnpaidEarning 
+                        ? 'border-amber-300 bg-amber-50/20 hover:border-amber-400' 
+                        : 'border-slate-200 hover:border-emerald-200'
+                    } flex flex-col sm:flex-row sm:items-center justify-between gap-3.5`}
+                  >
+                    {/* Left: Info, Client, Route, Time */}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`w-2.5 h-2.5 rounded-full ${isUnpaidEarning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                        <span className="font-black text-gray-800 text-sm sm:text-base">
+                          {op.courseTitle || op.label}
                         </span>
+                        {isUnpaidEarning ? (
+                          <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md font-black flex items-center gap-1 animate-pulse">
+                            <span>⏳</span>
+                            <span>غير مسددة</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md font-black">
+                            مسددة ✅
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Client Name & Phone */}
+                      {(op.clientName || op.clientPhone) && (
+                        <div className="flex items-center gap-2 text-xs font-bold bg-indigo-50/80 border border-indigo-200 rounded-xl px-2.5 py-1.5 w-fit flex-wrap">
+                          <span className="text-indigo-950 flex items-center gap-1 font-black">
+                            <span>👤</span>
+                            <span>{op.clientName || 'زبون'}</span>
+                          </span>
+                          {op.clientPhone && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-slate-700 dir-ltr text-[11px]" dir="ltr">
+                                📞 {op.clientPhone}
+                              </span>
+                              <a
+                                href={`tel:${op.clientPhone}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-md text-[10px] font-black transition-all active:scale-95"
+                                title="اتصال هاتف"
+                              >
+                                اتصال
+                              </a>
+                              {isUnpaidEarning && (
+                                <a
+                                  href={`https://wa.me/${op.clientPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                    `السلام عليكم أخي الكريم 🌹\nنذكركم بخصوص حساب رحلة توصيل (${op.courseTitle || op.label}) بقيمة ${op.amount.toLocaleString()} أوقية.\nشكراً جزيلاً!`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-black transition-all active:scale-95 flex items-center gap-0.5"
+                                  title="تذكير عبر واتساب"
+                                >
+                                  <span>💬</span>
+                                  <span>واتساب</span>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
-                      {isUnpaidEarning && (
-                        <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md font-black flex items-center gap-1 animate-pulse">
-                          <span>⏳</span>
-                          <span>غير مدفوع</span>
-                        </span>
+
+                      {hasRoute && (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold pr-2">
+                          <span>📍</span>
+                          <span>{op.fromLocation || 'غير محدد'}</span>
+                          <span className="text-blue-500">➔</span>
+                          <span>{op.toLocation || 'غير محدد'}</span>
+                        </div>
                       )}
-                      {isPaidEarning && (
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md font-black">
-                          تم الدفع ✅
-                        </span>
-                      )}
+
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 pr-2">
+                        <span>{op.timestamp}</span>
+                        {op.paidTimestamp && (
+                          <span className="text-emerald-600 font-normal">
+                            (سُددت الساعة {op.paidTimestamp})
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Client Name & Phone Reminder Details */}
-                    {(op.clientName || op.clientPhone) && (
-                      <div className="flex items-center gap-2 text-xs font-bold bg-indigo-50/70 border border-indigo-200/80 rounded-xl px-2.5 py-1.5 w-fit flex-wrap">
-                        <span className="text-indigo-900 flex items-center gap-1">
-                          <span>👤</span>
-                          <span className="font-black">{op.clientName || 'زبون'}</span>
-                        </span>
-                        {op.clientPhone && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-slate-700 dir-ltr text-[11px]" dir="ltr">
-                              📞 {op.clientPhone}
-                            </span>
-                            <a
-                              href={`tel:${op.clientPhone}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-md text-[10px] font-black transition-all active:scale-95"
-                              title="اتصال هاتف"
-                            >
-                              اتصال
-                            </a>
-                            {isUnpaidEarning && (
-                              <a
-                                href={`https://wa.me/${op.clientPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                  `السلام عليكم أخي الكريم 🌹\nنذكركم بخصوص حساب مشوار توصيل (${op.courseTitle || op.label}) بقيمة ${op.amount.toLocaleString()} أوقية.\nشكراً جزيلاً!`
-                                )}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-black transition-all active:scale-95 flex items-center gap-0.5"
-                                title="تذكير عبر واتساب"
-                              >
-                                <span>💬</span>
-                                <span>واتساب</span>
-                              </a>
-                            )}
+                    {/* Right: Amounts & Unified Actions */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                      <div className="text-left sm:text-right">
+                        <div className="font-black text-base sm:text-lg dir-ltr text-emerald-600 font-mono">
+                          +{op.amount.toLocaleString()} <span className="text-xs font-sans">أوقية</span>
+                        </div>
+                        {ownerDeduction > 0 && (
+                          <div className="text-[11px] font-bold text-red-500 dir-ltr font-mono">
+                            -{ownerDeduction.toLocaleString()} أوقية (خصم)
+                          </div>
+                        )}
+                        {ownerDeduction > 0 && (
+                          <div className="text-[11px] font-black text-slate-700 dir-ltr font-mono">
+                            الصافي: {netDriverAmount.toLocaleString()} أوقية
                           </div>
                         )}
                       </div>
-                    )}
 
-                    {hasRoute && (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold pr-4">
-                        <span>📍</span>
-                        <span>{op.fromLocation || 'غير محدد'}</span>
-                        <span className="text-blue-500">➔</span>
-                        <span>{op.toLocation || 'غير محدد'}</span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 pr-4">
-                      <span>{op.timestamp}</span>
-                      {op.paidTimestamp && (
-                        <span className="text-emerald-600 font-normal">
-                          (سُددت الساعة {op.paidTimestamp})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                    <span className={`font-black text-lg sm:text-xl dir-ltr ${isEarning ? (isUnpaidEarning ? 'text-amber-700' : 'text-green-600') : 'text-red-500'}`}>
-                      {isEarning ? '+' : '-'}{(op.amount || 0).toLocaleString()} <span className="text-xs">أوقية</span>
-                    </span>
-
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Quick Payment Status Toggle Button */}
-                      {isEarning && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Paid Toggle Button */}
                         <button
                           onClick={() => handleTogglePaidStatus(op.id)}
-                          className={`px-3 py-1.5 rounded-xl font-black text-xs border transition-all active:scale-95 flex items-center gap-1 shadow-2xs cursor-pointer ${
+                          className={`px-2.5 py-2 rounded-xl font-black text-xs border transition-all active:scale-95 flex items-center gap-1 shadow-2xs cursor-pointer ${
                             isUnpaidEarning
                               ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-sm'
                               : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
                           }`}
-                          title={isUnpaidEarning ? 'اضغط لتأكيد استلام المبلغ وتسديد المشوار' : 'تم تسديد المشوار (اضغط للتبديل إن أردت)'}
+                          title={isUnpaidEarning ? 'اضغط لتأكيد استلام المبلغ وتسديد الحساب' : 'تم تسديد الحساب'}
                         >
                           {isUnpaidEarning ? (
                             <>
@@ -1323,17 +1417,80 @@ const App: React.FC = () => {
                             </>
                           ) : (
                             <>
-                              <span>تم الدفع</span>
+                              <span>مسددة</span>
                               <span>✅</span>
                             </>
                           )}
                         </button>
-                      )}
 
-                      <button onClick={() => setActiveInput({ type: 'editOperation', title: 'تعديل المبلغ', operationId: op.id })} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-all" title="تعديل">
+                        {/* Edit Button: Opens sequential trip editing */}
+                        <button 
+                          onClick={() => {
+                            setInputValue(op.amount.toString());
+                            setActiveInput({
+                              type: 'editTripAmount',
+                              title: `تعديل مبلغ المكسب (${op.courseTitle || op.label})`,
+                              operationId: op.id,
+                              currentPct: op.ownerShareAmount || 0
+                            });
+                          }} 
+                          className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-all active:scale-95 cursor-pointer" 
+                          title="تعديل المكسب"
+                        >
+                          ✎
+                        </button>
+
+                        {/* Delete Button */}
+                        <button 
+                          onClick={() => deleteOperation(op.id)} 
+                          className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all active:scale-95 cursor-pointer" 
+                          title="حذف المكسب"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Standalone / Non-earning operations (fuel, purchases, objectivePayment, standalone ownerShare)
+              return (
+                <div 
+                  key={op.id} 
+                  className="bg-white p-4 sm:p-5 rounded-3xl border-2 border-slate-200 hover:border-slate-300 transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                      <p className="font-black text-gray-800 text-sm sm:text-base">{op.label}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 pr-4">
+                      <span>{op.timestamp}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    <span className="font-black text-lg sm:text-xl dir-ltr text-red-500">
+                      -{(op.amount || 0).toLocaleString()} <span className="text-xs">أوقية</span>
+                    </span>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button 
+                        onClick={() => {
+                          setInputValue(op.amount.toString());
+                          setActiveInput({ type: 'editOperation', title: `تعديل مبلغ (${op.label})`, operationId: op.id });
+                        }} 
+                        className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-all cursor-pointer" 
+                        title="تعديل"
+                      >
                         ✎
                       </button>
-                      <button onClick={() => deleteOperation(op.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all" title="حذف">
+                      <button 
+                        onClick={() => deleteOperation(op.id)} 
+                        className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all cursor-pointer" 
+                        title="حذف"
+                      >
                         🗑
                       </button>
                     </div>
@@ -1345,106 +1502,23 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Objectives Modal */}
+      {/* 10-Day 10,000 UM Objective Challenge Modal */}
       {showObjectives && (
-        <div className="fixed inset-0 bg-[#F9FAFB] z-[80] overflow-y-auto p-4 sm:p-6 font-['Cairo',sans-serif] select-none text-right" dir="rtl">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 flex items-center gap-2">
-                <span>الأهداف والادخار المخصص 🎯</span>
-              </h2>
-              <p className="text-xs text-gray-500 font-bold mt-1">تتبع المبالغ المتبقية لكل هدف بدقة وحماس</p>
-            </div>
-            <button onClick={() => setShowObjectives(false)} className="p-2.5 sm:p-3 bg-red-100 hover:bg-red-200 rounded-2xl font-black text-red-700 px-5 text-sm transition-all active:scale-95">
-              إغلاق ✕
-            </button>
-          </div>
-          
-          <div className="bg-white p-5 sm:p-6 rounded-[2rem] border-2 border-dashed border-blue-200 mb-6 shadow-xs">
-            <h3 className="font-black mb-3 text-blue-900 text-sm sm:text-base">إضافة هدف جديد</h3>
-            <input 
-              type="text" 
-              placeholder="اسم الهدف (مثلاً: تجميع 100 ألف، شراء دراجة، رخصة قيادة...)" 
-              value={objectiveTitle} 
-              onChange={e => setObjectiveTitle(e.target.value)}
-              className="w-full p-3.5 bg-gray-50 rounded-2xl border-2 border-gray-100 mb-3 text-right font-bold focus:border-blue-500 focus:bg-white outline-none transition-all text-sm"
-            />
-            <button 
-              onClick={() => setActiveInput({ type: 'newObjectiveAmount', title: 'المبلغ المطلوب للهدف' })} 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-2xl font-black shadow-md text-sm transition-all active:scale-95"
-            >
-              تحديد المبلغ المطلوب وإضافة الهدف ✓
-            </button>
-          </div>
-
-          <div className="space-y-4 pb-10">
-            {data.objectives.length === 0 && (
-              <div className="text-center text-gray-400 py-16 font-bold bg-white rounded-3xl border border-gray-100 p-8">
-                <span className="text-4xl block mb-2">🎯</span>
-                لم تقم بإضافة أي أهداف بعد. أضف أهدافك لتبدأ رؤية المتبقي يومياً!
-              </div>
-            )}
-
-            {data.objectives.map(obj => {
-              const remaining = Math.max(0, (obj.targetAmount || 0) - (obj.paidAmount || 0));
-              const pct = Math.min(100, Math.round(((obj.paidAmount || 0) / (obj.targetAmount || 1)) * 100));
-
-              return (
-                <div key={obj.id} className={`bg-white p-5 sm:p-6 rounded-[2rem] border-2 shadow-xs transition-all ${obj.isCompleted ? 'border-emerald-200 bg-emerald-50/50' : 'border-gray-100 hover:border-blue-100'}`}>
-                  <div className="flex justify-between items-start mb-3 gap-2">
-                    <div className="flex-1">
-                      <h4 className="font-black text-lg text-gray-900 flex items-center gap-2">
-                        <span>{obj.title}</span>
-                        {obj.isCompleted && <span className="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-lg">مكتمل 🏆</span>}
-                      </h4>
-                      <p className="text-xs font-bold text-gray-500 mt-0.5">
-                        المطلوب الكلي: {(obj.targetAmount || 0).toLocaleString()} أوقية
-                      </p>
-                    </div>
-
-                    <div className="flex gap-1.5">
-                      {!obj.isCompleted && (
-                        <button 
-                          onClick={() => setActiveInput({ type: 'payObjective', title: `دفع لـ ${obj.title}`, objectiveId: obj.id })} 
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-black shadow-xs text-xs active:scale-95 transition-all"
-                        >
-                          دفع 💰
-                        </button>
-                      )}
-                      <button onClick={() => setActiveInput({ type: 'editObjectiveAmount', title: `تعديل مبلغ ${obj.title}`, objectiveId: obj.id })} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs transition-all" title="تعديل">
-                        ✎
-                      </button>
-                      <button onClick={() => deleteObjective(obj.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs transition-all" title="حذف">
-                        🗑
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Motivational Remaining Counter Banner */}
-                  <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200/80 rounded-2xl p-3 mb-3 flex justify-between items-center flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{obj.isCompleted ? '🎉' : '⏳'}</span>
-                      <span className="text-xs font-black text-blue-900">
-                        {obj.isCompleted 
-                          ? 'ألف مبروك! حققت هدفك كاملاً 100%' 
-                          : <>المتبقي لتحقيق الهدف: <span className="text-sm font-black text-indigo-700 underline">{remaining.toLocaleString()} أوقية</span></>
-                        }
-                      </span>
-                    </div>
-                    <span className="text-xs font-black bg-white px-2.5 py-1 rounded-xl text-blue-800 border border-blue-200 shadow-2xs">
-                      تم دفع: {(obj.paidAmount || 0).toLocaleString()} ({pct}%)
-                    </span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden mb-1 border border-gray-200/70 p-0.5">
-                    <div className="bg-emerald-500 h-full rounded-full transition-all duration-500 shadow-inner" style={{ width: `${pct}%` }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <ObjectivesChallengeModal
+          data={data}
+          onClose={() => setShowObjectives(false)}
+          onOpenVault={() => {
+            setShowObjectives(false);
+            setShowVault(true);
+            setVaultUnlocked(false);
+            setActiveInput({ type: 'pin', title: 'أدخل رمز PIN للخزنة' });
+          }}
+          onOpenKeypadForDeposit={() => {
+            setShowObjectives(false);
+            setActiveInput({ type: 'depositVault', title: 'إيداع مباشر في تحدي الـ 10,000 أوقية' });
+          }}
+          onOpenChest={handleOpenChest}
+        />
       )}
 
       {/* Vault (Savings & Wealth Plan Tracker) */}
@@ -1460,41 +1534,6 @@ const App: React.FC = () => {
           }}
           onAddManualDeposit={() => setActiveInput({ type: 'depositVault', title: 'مبلغ الإيداع المباشر في الخزنة' })}
           onOpenChest={handleOpenChest}
-          onClearCharityFund={() => {
-            const currentCharity = data.gamification?.charityFund || 0;
-            if (currentCharity === 0) return;
-            const newData = { ...data };
-            if (!newData.gamification) {
-              newData.gamification = {
-                streakDays: 1,
-                lastStreakDate: data.currentDay.date,
-                totalXp: 500,
-                openedChests: [],
-                celebratedMilestones: [],
-                charityFund: 0,
-                unlockedTitles: ['سائق واعد 🌱'],
-                selectedTitle: 'سائق واعد 🌱',
-                strictCommitmentEnabled: true,
-                mysteryInventory: []
-              };
-            }
-            newData.gamification.charityFund = 0;
-            newData.vault.push({
-              date: getWorkingDate(),
-              amount: 0,
-              note: `تم إخراج وتصفير صدقة الانضباط والتأخير (${currentCharity.toLocaleString()} أوقية) ✨`
-            });
-            playCoinChime();
-            triggerFeedback({
-              id: Math.random().toString(),
-              type: 'success',
-              title: 'تقبل الله صدقتك! ✨',
-              subtitle: `تم تصفير صندوق الصدقة والانضباط (${currentCharity.toLocaleString()} أوقية)`,
-              icon: '✨'
-            });
-            setData(newData);
-            saveData(newData);
-          }}
         />
       )}
 
@@ -1505,8 +1544,6 @@ const App: React.FC = () => {
           station={mysteryModal.station}
           card={mysteryModal.card}
           bonusXp={mysteryModal.bonusXp}
-          penaltyAmount={mysteryModal.penaltyAmount}
-          penaltyReason={mysteryModal.penaltyReason}
           onClose={() => setMysteryModal(prev => ({ ...prev, isOpen: false }))}
           onOpenChest={() => {
             if (mysteryModal.station) {
@@ -2013,6 +2050,8 @@ const App: React.FC = () => {
         onRecordNow={(quickCourse) => {
           setShowDispatchCall(false);
           setForcedAlertStage(undefined);
+          setIsCoursePaid(false);
+          setShowMissingClientError(false);
           if (quickCourse) {
             if (quickCourse.fromLocation) setFromLocation(quickCourse.fromLocation);
             if (quickCourse.toLocation) setToLocation(quickCourse.toLocation);

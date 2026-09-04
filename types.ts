@@ -4,10 +4,13 @@ export type OperationType = 'earnings' | 'ownerShare' | 'fuel' | 'purchases' | '
 export interface Operation {
   id: string;
   type: OperationType;
-  amount: number;
+  amount: number; // مبلغ العملية أو إجمالي الكورس
+  ownerShareAmount?: number; // مبلغ خصم نسبة المالك المرتبط بهذا الكورس
+  ownerSharePercentage?: number; // النسبة المئوية المخصومة (مثلاً 20%)
+  netAmount?: number; // صافي دخل السائق بعد خصم النسبة
   label: string;
   timestamp: string;
-  courseTitle?: string; // اسم أو عنوان المكور / الكورس
+  courseTitle?: string; // اسم أو عنوان الرحلة
   fromLocation?: string; // من أين / اسم المرسل
   toLocation?: string; // إلى أين / الوجهة
   clientName?: string; // اسم الزبون أو المحل
@@ -73,13 +76,16 @@ export interface AppSettings {
   sleepHoursStart?: number; // e.g. 0 for 12:00 midnight
   sleepHoursEnd?: number; // e.g. 8 for 8:00 AM
   notificationsPermissionRequested?: boolean;
+  defaultOwnerSharePercentage?: number; // النسبة الافتراضية لمالك السيارة (مثلاً 20%)
 }
 
 export interface SavingsPlan {
-  targetAmount: number; // e.g., 100000 or 180000
-  timeframeMonths: number; // e.g., 6 months
+  targetAmount: number; // e.g., 10000
+  timeframeMonths: number; // e.g., 1
+  durationDays?: number; // e.g., 10 days
   startDate: string; // ISO Date YYYY-MM-DD
-  title: string; // e.g., "تجميع 100,000 أوقية"
+  challengeStartedAt?: number; // timestamp in ms when first course/message was recorded
+  title: string; // e.g., "تحدي تجميع 10,000 أوقية (10 أيام)"
   dailyIncomeBaseline: number; // e.g. 1500
 }
 
